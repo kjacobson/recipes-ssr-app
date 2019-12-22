@@ -1,0 +1,23 @@
+{
+  "name": "h2serve",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "fastify": "^2.10.0",
+    "fastify-helmet": "^3.0.2",
+    "fastify-static": "^2.5.0",
+    "helmet": "^3.21.2",
+    "uuid": "^3.3.3"
+  },
+  "devDependencies": {
+    "axios": "^0.19.0",
+    "cheerio": "^1.0.0-rc.3",
+    "json-server": "^0.15.1"
+  }
+}
