@@ -1,6 +1,6 @@
 exports.up = (knex) => {
-    return Promise.all([
-        knex.schema.createTable('recipes', table => {
+    return knex.raw('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"').then(() => {
+        return knex.schema.createTable('recipes', table => {
             table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'))
             table.string('title')
             table.uuid('user_id').references('id').inTable('users')
@@ -8,11 +8,9 @@ exports.up = (knex) => {
             table.timestamp('date_added').defaultTo(knex.fn.now())
             table.jsonb('json')
         })
-    ])
+    })
 }
 
 exports.down = (knex) => {
-    return Promise.all([
-        knex.schema.dropTableIfExists('recipes')
-    ])
+    return knex.schema.dropTableIfExists('recipes')
 }
