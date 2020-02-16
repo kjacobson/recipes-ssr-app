@@ -4,20 +4,26 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "migrate": "knex migrate:latest",
+    "unmigrate": "knex migrate:rollback",
+    "seed": "knex seed:run "
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "axios": "^0.19.0",
+    "cheerio": "^1.0.0-rc.3",
     "fastify": "^2.10.0",
+    "fastify-formbody": "^3.1.0",
     "fastify-helmet": "^3.0.2",
     "fastify-static": "^2.5.0",
     "helmet": "^3.21.2",
+    "knex": "^0.20.9",
+    "pg": "^7.18.1",
     "uuid": "^3.3.3"
   },
   "devDependencies": {
-    "axios": "^0.19.0",
-    "cheerio": "^1.0.0-rc.3",
     "json-server": "^0.15.1"
   }
 }

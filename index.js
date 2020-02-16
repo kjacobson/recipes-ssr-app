@@ -7,8 +7,14 @@ const zlip = require('zlib')
 const fastify = require('fastify')
 const helmet = require('fastify-helmet')
 const fastifyStatic = require('fastify-static')
+const fastifyBody = require('fastify-formbody')
 const uuid = require('uuid/v1')
 const axios = require('axios')
+const cheerio = require('cheerio')
+
+const { head, footer, singleRecipe, showPage, importPage } = require('./templates')
+const addRecipe = require('./scrape')
+const db = require('./db.js')
 
 const port = 3002
 
@@ -37,6 +43,7 @@ app.register(helmet)
 app.register(fastifyStatic, {
     root: path.join(__dirname, 'static')
 })
+app.register(fastifyBody)
 
 // for streaming gzip; likely not performant. TODO: test
 const initStream = (res) => {
@@ -46,120 +53,13 @@ const initStream = (res) => {
     return stream
 }
 
-const htmlEscape = (str='') => {
-    return str.replace(/&/g, '&amp;')
-        .replace(/>/g, '&gt;')
-        .replace(/</g, '&lt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
-        .replace(/`/g, '&#96;')
-}
 
-const htmlTagger = (strings, values) => {
-    const raw = strings.raw
-
-    let result = ''
-
-    values.forEach((val, i) => {
-        let lit = raw[i]
-        if (Array.isArray(val)) {
-            val = val.join('')
-        }
-        if (lit.endsWith('!')) {
-            val = htmlEscape(val)
-            lit = lit.slice(0, -1)
-        }
-        result += lit
-        result += val
-    })
-    result += raw[raw.length-1]
-    return result
-}
-
-const H = (strings, ...values) => {
-    return htmlTagger(strings, values)
-}
-
-const asyncH = async (strings, ...values) => {
-    return new Promise((resolve, reject) => {
-        setImmediate(() => {
-            resolve(
-                htmlTagger(strings, values)
-            )
-        })
-    })
-}
-
-const head = (lang, title) => {
-    return H`
-        <!doctype html>
-        <html lang="${lang}">
-            <head>
-                <meta charset="utf-8">
-                <title>!${title}</title>
-                <meta name="description" content="">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <link rel="preload" href="index.css" as="style">
-                <link rel="stylesheet" href="index.css">
-            </head>
-            <body>
-                <main>
-    `
-}
-
-const footer = () => {
-    return H`</main></body></html>`
-}
-
-const ingredient = (ingredient) => {
-    return H`<li>!${ingredient}</li>`
-}
-
-const ingredientList = (ingredients) => {
-    return H`<ul>
-        ${ ingredients.map(ingredient) }
-    </ul>`
-}
-
-const instructionItem = (instruction) => {
-    if (instruction.name) { debugger }
-    return instruction.name && instruction.itemListElement
-        ? H`<h3>!${instruction.name}:</h3>${instruction.itemListElement.map(instructionItem)}`
-        : H`<li>!${instruction.text}</li>`;
-}
-
-const singleRecipe = (recipe) => {
-    return asyncH`
-        <article>
-            <h1>!${(recipe.name || '')}</h1>
-            <strong>!${recipe.author ? recipe.author.name : ''}</strong>
-
-            <p>!${recipe.description || ''}</p>
-
-            <h2>Ingredients:</h2>
-            ${recipe.recipeIngredient 
-                ? ingredientList(recipe.recipeIngredient)
-                : ''
-            }
-
-            <h2>Instructions:</h2>
-            <ol>
-                ${recipe.recipeInstructions ? recipe.recipeInstructions.map(instructionItem) : ''}
-            </ol>
-        </article>
-    `
-}
-
-const show = (recipe) => {
-    return H`${singleRecipe(recipe)}`
-}
-
-app.get('/', (req, reply) => {
-    reply.header('Content-Type', 'text/html; charset=UTF-8')
+app.get('/', async (req, reply) => {
+    reply.type('text/html')
     reply.res.write(head('en', 'All the recipes') + '<h1>All recipes</h1>')
-    axios('http://localhost:3004/recipes/').then(async (response) => {
-        for (const recipe of response.data) {
-            reply.res.write(await singleRecipe(recipe))
+    db('recipes').offset(0).limit(20).then(async (response) => {
+        for (const recipe of response) {
+            reply.res.write(await singleRecipe(recipe.json, true))
         }
         reply.res.write(footer())
         reply.sent = true
@@ -167,15 +67,27 @@ app.get('/', (req, reply) => {
     })
 })
 
-app.get('/recipes/:id', (req, reply, params) => {
-    reply.header('Content-Type', 'text/html; charset=UTF-8')
-    axios('http://localhost:3004/recipes/7/').then((response) => {
-        reply.res.write(head('en', response.data.name))
-        reply.res.write(show(response.data))
-        reply.res.write(footer())
-        reply.sent = true
-        reply.res.end()
-    })
+app.get('/recipes/:id', async (req, reply, params) => {
+    reply.type('text/html')
+    const response = await db.from('recipes').where('id', req.params.id)
+    const recipe = response[0].json
+    return showPage(recipe)
+})
+
+app.get('/recipes/import', (req, reply) => {
+    reply.type('text/html')
+    reply.send(importPage())
+})
+
+app.post('/recipes', async (req, reply) => {
+    const { url } = req.body
+    try {
+        const recipeId = await addRecipe(url)
+        reply.redirect('/recipes/' + recipeId)
+    }
+    catch(err) {
+        reply.send('Error')
+    }
 })
 
 app.listen(port, (error) => {
@@ -186,21 +98,21 @@ app.listen(port, (error) => {
         app.log.info('Listening on port: ' + port + '.')
     }
 
-    process.on('SIGINT', () => {
-        /**
-         * We might see this signal in prod if pm2 restarts a process
-         * due to high memory usage, but we'll rely on other monitoring
-         * for this.
-         *
-         * If a process fails we won't see this.
-         */
-        app.log.info('SIGINT')
-        teardown()
-    })
-    process.on('SIGTERM', () => {
-        app.log.info('SIGTERM')
-        teardown()
-    })
+//     process.on('SIGINT', () => {
+//         /**
+//          * We might see this signal in prod if pm2 restarts a process
+//          * due to high memory usage, but we'll rely on other monitoring
+//          * for this.
+//          *
+//          * If a process fails we won't see this.
+//          */
+//         app.log.info('SIGINT')
+//         teardown()
+//     })
+//     process.on('SIGTERM', () => {
+//         app.log.info('SIGTERM')
+//         teardown()
+//     })
 })
 
 const teardown = () => {
