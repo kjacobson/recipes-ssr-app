@@ -124,6 +124,15 @@ const importPage = () => {
     `
 }
 
+const errorPage = (message) => {
+    return H`
+        ${head('en', 'Error')}
+        <h1>Something went wrong</h1>
+        <p>${message}</p>
+        ${footer()}
+    `
+}
+
 
 module.exports = {
     head,

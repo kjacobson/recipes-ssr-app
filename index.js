@@ -3,25 +3,23 @@
 const path = require('path')
 const fs = require('fs')
 const https = require('https')
-const zlip = require('zlib')
 const fastify = require('fastify')
+const axios = require('axios')
 const helmet = require('fastify-helmet')
+const rTracer = require('cls-rtracer')
 const fastifyStatic = require('fastify-static')
 const fastifyBody = require('fastify-formbody')
-const uuid = require('uuid/v1')
-const axios = require('axios')
-const cheerio = require('cheerio')
 
 const { head, footer, singleRecipe, showPage, importPage } = require('./templates')
-const addRecipe = require('./scrape')
-const db = require('./db.js')
+const extractRecipeData = require('./scrape')
+const errors = require('./errors')
 
 const port = 3002
 
 const app = fastify(
     {
         logger: true,
-        // http2: true,
+        ignoreTrailingSlash: true,
         https: {
             allowHTTP1: true,
             key: fs.readFileSync(__dirname + '/server.key'),
@@ -30,48 +28,44 @@ const app = fastify(
     }
 )
 app.register(helmet)
-// no compession middleware.
-// would rather stream HTML than compress HTML
-// and streaming + compression is likely slow
-// CSS and JS should come gzipped from CDNs
-// app.register((req, res, next) => {
-//     httpContext.set('url', req.original_url)
-//     httpContext.set('request_id', uuid())
-//     httpContext.set('method', req.method)
-//     next()
-// })
 app.register(fastifyStatic, {
     root: path.join(__dirname, 'static')
 })
 app.register(fastifyBody)
+// app.register(rTracer.fastifyMiddleware())
 
-// for streaming gzip; likely not performant. TODO: test
-const initStream = (res) => {
-    const stream = zlib.createGzip()
-    stream._flush = zlib.Z_SYNC_FLUSH
-    stream.pipe(res)
-    return stream
+
+const saveRecipe = async (url, title, json) => {
+    return axios.post('http://localhost:3004/recipes/', {
+        url,
+        title,
+        json
+    })
 }
 
-
-app.get('/', async (req, reply) => {
+app.get('/recipes/', async (req, reply) => {
     reply.type('text/html')
     reply.res.write(head('en', 'All the recipes') + '<h1>All recipes</h1>')
-    db('recipes').offset(0).limit(20).then(async (response) => {
-        for (const recipe of response) {
+    axios.get('http://localhost:3004/recipes?offset=0&count=20').then(async (response) => {
+        for (const recipe of response.data) {
             reply.res.write(await singleRecipe(recipe.json, true))
         }
         reply.res.write(footer())
         reply.sent = true
         reply.res.end()
+    }, (err) => {
+        reply.send(errors.UNKNOWN_ERROR)
     })
 })
 
-app.get('/recipes/:id', async (req, reply, params) => {
+app.get('/recipes/:id', (req, reply, params) => {
     reply.type('text/html')
-    const response = await db.from('recipes').where('id', req.params.id)
-    const recipe = response[0].json
-    return showPage(recipe)
+    axios.get(`http://localhost:3004/recipes/${req.params.id}/`).then(response => {
+        const recipe = response.data.json
+        reply.send(showPage(recipe))
+    }, (err) => {
+        reply.send(errors.UNKNOWN_ERROR)
+    })
 })
 
 app.get('/recipes/import', (req, reply) => {
@@ -79,15 +73,23 @@ app.get('/recipes/import', (req, reply) => {
     reply.send(importPage())
 })
 
-app.post('/recipes', async (req, reply) => {
+app.post('/recipes', (req, reply) => {
     const { url } = req.body
-    try {
-        const recipeId = await addRecipe(url)
-        reply.redirect('/recipes/' + recipeId)
-    }
-    catch(err) {
-        reply.send('Error')
-    }
+    extractRecipeData(url)
+        .then((recipe) => {
+            const { json, parsedJson } = recipe
+            return saveRecipe(url, parsedJson.name, json)
+        })
+        .then((response) => {
+            if (response.data) {
+                reply.redirect('/recipes/' + response.data.id)
+            } else {
+                reply.send(errors.UNKNOWN_ERROR)
+            }
+        })
+        .catch((err) => {
+            reply.send(err)
+        })
 })
 
 app.listen(port, (error) => {

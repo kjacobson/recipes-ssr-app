@@ -3,20 +3,13 @@ const {
 } = require('worker_threads');
 const cheerio = require('cheerio')
 const axios = require('axios')
-const db = require('./db.js')
+
+const errors = require('./errors')
+
 
 const isRecipe = (i, el) => {
     const json = JSON.parse(cheerio(el).html())
     return json["@type"] === "Recipe"
-}
-
-const saveRecipe = async (json) => {
-    const parsed = JSON.parse(json)
-    const recipes = await db('recipes').insert({
-        title: parsed.name,
-        json: json
-    }, ['id'])
-    return recipes[0].id
 }
 
 const parse = (url) => {
@@ -28,21 +21,28 @@ const parse = (url) => {
             const firstRecipe = scripts.filter(isRecipe)[0]
             return firstRecipe
                 ? resolve(cheerio(firstRecipe).html())
-                : reject("No recipe found")
+                : reject(errors.NO_RECIPE_DATA)
         }
         catch(err) {
-            reject(err)
+            return reject(errors.UNKNOWN_ERROR)
         }
     })
 }
 
-
-const parseUrl = (url) => {
+const extractRecipeData = (url) => {
+    const worker = new Worker(__filename, {
+        workerData: url
+    })
     return new Promise((resolve, reject) => {
-        const worker = new Worker(__filename, {
-            workerData: url
+        worker.on('message', (data) => {
+            if (data.error) {
+                return reject(data.message)
+            }
+            return resolve({
+                json: data,
+                parsedJson: JSON.parse(data)
+            })
         })
-        worker.on('message', resolve)
         worker.on('error', reject)
         worker.on('exit', (code) => {
             if (code !== 0) {
@@ -51,38 +51,15 @@ const parseUrl = (url) => {
         })
     })
 }
-const addRecipe = async (url) => {
-    let recipe
-    try {
-        recipe = await parseUrl(url)
-    }
-    catch(err) {
-        debugger
-        return false
-    }
-    try {
-        const recipeId = await saveRecipe(recipe)
-        return recipeId
-    }
-    catch(err) {
-        debugger
-        return false
-    }
-}
-
 
 if (isMainThread) {
-    module.exports = addRecipe
+    module.exports = extractRecipeData
 } else {
     const url = workerData
     parse(url).then((recipeJson) => {
-        if (recipeJson) {
-            parentPort.postMessage(recipeJson)
-        } else {
-            throw new Error('No recipe found in structured data')
-        }
+        parentPort.postMessage(recipeJson || { error: true, message: errors.NO_RECIPE_DATA})
     }, (err) => {
-        throw new Error(err)
+        parentPort.postMessage({ error: true, message: errors.NO_RECIPE_DATA})
     })
 }
 
