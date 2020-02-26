@@ -85,6 +85,11 @@ const instructionItem = (instruction) => {
 }
 
 const singleRecipe = (recipeId, recipe, asynchronous=false) => {
+    let image = recipe.image
+    debugger
+    if (Array.isArray(image) && image.length) {
+        image = image[0]
+    }
     return (asynchronous ? asyncH : H)`
         <article>
             <h1>
@@ -93,6 +98,10 @@ const singleRecipe = (recipeId, recipe, asynchronous=false) => {
                 </a>
             </h1>
             <em>!${recipe.author ? recipe.author.name : ''}</em>
+
+            ${image ?
+                H`<img src="!${image}" alt="" />` : ''
+            }
 
             <p>!${recipe.description || ''}</p>
 
