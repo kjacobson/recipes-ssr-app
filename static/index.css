@@ -1,5 +1,5 @@
 body {
-    border-bottom: 0.5em solid #4b88c2;
+    border-top: 0.5em solid #4b88c2;
     color: #323232;
     font-family: Georgia, serif;
     font-size: 18px;
@@ -7,7 +7,7 @@ body {
     font-kerning: normal;
     line-height: 1.6667;
     margin: 0;
-    padding-bottom: 3em;
+    padding: 2em 3em 3em;
     text-rendering: optimizeLegibility;
 }
 h1, h2, h3, h4 {
