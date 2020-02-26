@@ -45,10 +45,10 @@ const saveRecipe = async (url, title, json) => {
 
 app.get('/recipes/', async (req, reply) => {
     reply.type('text/html')
-    reply.res.write(head('en', 'All the recipes') + '<h1>All recipes</h1>')
+    reply.res.write(head('en', 'All recipes', 'All recipes'))
     axios.get('http://localhost:3004/recipes?offset=0&count=20').then(async (response) => {
         for (const recipe of response.data) {
-            reply.res.write(await singleRecipe(recipe.json, true))
+            reply.res.write(await singleRecipe(recipe.id, recipe.json, true))
         }
         reply.res.write(footer())
         reply.sent = true
@@ -61,7 +61,7 @@ app.get('/recipes/', async (req, reply) => {
 app.get('/recipes/:id', (req, reply, params) => {
     reply.type('text/html')
     axios.get(`http://localhost:3004/recipes/${req.params.id}/`).then(response => {
-        const recipe = response.data.json
+        const recipe = response.data
         reply.send(showPage(recipe))
     }, (err) => {
         reply.send(errors.UNKNOWN_ERROR)

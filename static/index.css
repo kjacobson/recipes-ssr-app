@@ -1,3 +1,50 @@
 body {
-    font-family: Helvetica, Arial, sans-serif;
+    border-bottom: 0.5em solid #4b88c2;
+    color: #323232;
+    font-family: Georgia, serif;
+    font-size: 18px;
+    font-feature-settings: 'kern';
+    font-kerning: normal;
+    line-height: 1.6667;
+    margin: 0;
+    padding-bottom: 3em;
+    text-rendering: optimizeLegibility;
+}
+h1, h2, h3, h4 {
+    color: #1a1a1a;
+}
+header {
+    margin: 0 2em;
+}
+header > h1 {
+    border-bottom: 4px solid #4b88c2;
+    display: inline-block;
+}
+a[href] {
+    border-bottom: 2px solid #4b88c2;
+    color: #1a1a1a;
+    font-family: verdana, sans-serif;
+    padding: 0 0 2px;
+    text-decoration: none;
+}
+article {
+    margin: 0 2em 3em;
+    width: 36em;
+}
+article > h1 {
+    font-family: Verdana, sans-serif;
+    font-size: 1.7em;
+    font-weight: normal;
+}
+article > h1 > a {
+    color: #1a1a1a;
+    text-decoration: none;
+}
+article > h2 {
+    font-size: 1em;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+ol > li {
+    margin-bottom: 0.5em;
 }

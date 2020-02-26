@@ -42,7 +42,7 @@ const asyncH = async (strings, ...values) => {
     })
 }
 
-const head = (lang, title) => {
+const head = (lang, title, h1) => {
     return H`
         <!doctype html>
         <html lang="${lang}">
@@ -55,6 +55,11 @@ const head = (lang, title) => {
                 <link rel="stylesheet" href="/index.css">
             </head>
             <body>
+                ${ h1 ? H`
+                <header>
+                    <h1>!${h1}</h1>
+                </header>
+                ` : ''}
                 <main>
     `
 }
@@ -79,11 +84,15 @@ const instructionItem = (instruction) => {
         : H`<li>!${instruction.text}</li>`;
 }
 
-const singleRecipe = (recipe, asynchronous=false) => {
+const singleRecipe = (recipeId, recipe, asynchronous=false) => {
     return (asynchronous ? asyncH : H)`
         <article>
-            <h1>!${(recipe.name || '')}</h1>
-            <strong>!${recipe.author ? recipe.author.name : ''}</strong>
+            <h1>
+                <a href="/recipes/${recipeId}" title="View full recipe">
+                    !${(recipe.name || '')}</h1>
+                </a>
+            </h1>
+            <em>!${recipe.author ? recipe.author.name : ''}</em>
 
             <p>!${recipe.description || ''}</p>
 
@@ -97,22 +106,24 @@ const singleRecipe = (recipe, asynchronous=false) => {
             <ol>
                 ${recipe.recipeInstructions ? recipe.recipeInstructions.map(instructionItem) : ''}
             </ol>
+            <a href="!${recipe.url}" target="_blank" rel="noopener" title="View original">
+                !${recipe.url}
+            </a>
         </article>
     `
 }
 
 const showPage = (recipe) => {
     return H`
-        ${head('en', recipe.name)}
-        ${singleRecipe(recipe)}
+        ${head('en', recipe.json.name)}
+        ${singleRecipe(recipe.id, recipe.json)}
         ${footer()}
     `
 }
 
 const importPage = () => {
     return H`
-        ${head('en', 'Import a new recipe')}
-        <h1>Import a recipe from the web</h1>
+        ${head('en', 'Import a new recipe', 'Import a recipe from the web')}
         <form action="/recipes" method="POST">
             <input type="url" name="url"
                 required
@@ -126,8 +137,7 @@ const importPage = () => {
 
 const errorPage = (message) => {
     return H`
-        ${head('en', 'Error')}
-        <h1>Something went wrong</h1>
+        ${head('en', 'Error', 'Something went wrong')}
         <p>${message}</p>
         ${footer()}
     `
