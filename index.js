@@ -7,6 +7,7 @@ const fastify = require('fastify')
 const axios = require('axios')
 const helmet = require('fastify-helmet')
 const rTracer = require('cls-rtracer')
+const fastifySecureSession = require('fastify-secure-session')
 const fastifyStatic = require('fastify-static')
 const fastifyBody = require('fastify-formbody')
 
@@ -28,6 +29,13 @@ const app = fastify(
     }
 )
 app.register(helmet)
+app.register(fastifySecureSession, {
+    // adapt this to point to the directory where secret-key is located
+    key: fs.readFileSync(path.join(__dirname, 'secret-key')),
+    cookie: {
+        path: '/'
+    }
+})
 app.register(fastifyStatic, {
     root: path.join(__dirname, 'static')
 })
@@ -42,6 +50,32 @@ const saveRecipe = async (url, title, json) => {
         json
     })
 }
+
+const getFlash = function(type) {
+    let flash = this.session.get('flash')
+    let ret
+
+    if (flash && type) {
+        ret = flash[type] || []
+        delete flash[type]
+        this.session.set('flash', flash)
+    } else {
+        ret = flash
+        this.session.set('flash', {})
+    }
+    return ret
+}
+
+app.decorateRequest('setFlash', function(type='info', val) {
+    const flash = this.session.get('flash') || {}
+    flash[type] = flash[type] || []
+    flash[type].push(val)
+    this.session.set('flash', flash)
+})
+app.decorateRequest('getFlash', getFlash)
+app.decorateReply('getFlash', getFlash)
+
+
 
 app.get('/recipes/', async (req, reply) => {
     reply.type('text/html')
@@ -69,8 +103,12 @@ app.get('/recipes/:id', (req, reply, params) => {
 })
 
 app.get('/recipes/import', (req, reply) => {
+    const errors = req.getFlash('error')
+
     reply.type('text/html')
-    reply.send(importPage())
+    reply.send(
+        importPage(errors)
+    )
 })
 
 app.post('/recipes', (req, reply) => {
@@ -82,13 +120,14 @@ app.post('/recipes', (req, reply) => {
         })
         .then((response) => {
             if (response.data) {
-                reply.redirect('/recipes/' + response.data.id)
+                reply.redirect(303, '/recipes/' + response.data.id)
             } else {
                 reply.send(errors.UNKNOWN_ERROR)
             }
         })
         .catch((err) => {
-            reply.send(err)
+            req.setFlash('error', err)
+            reply.redirect(303, '/recipes/import')
         })
 })
 

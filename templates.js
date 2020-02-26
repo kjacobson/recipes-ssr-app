@@ -130,9 +130,14 @@ const showPage = (recipe) => {
     `
 }
 
-const importPage = () => {
+const errorMessage = (error) => {
+    return H`<p class="error">${error}</p>`
+}
+
+const importPage = (errors) => {
     return H`
         ${head('en', 'Import a new recipe', 'Import a recipe from the web')}
+        ${errors ? errors.map(errorMessage) : ''}
         <form action="/recipes" method="POST">
             <input type="url" name="url"
                 required
