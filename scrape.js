@@ -7,23 +7,44 @@ const axios = require('axios')
 const errors = require('./errors')
 
 
-const isRecipe = (i, el) => {
+const isRecipe = (item) => {
+    return item["@type"] === "Recipe"
+}
+
+const extractRecipe = (i, el) => {
     const json = JSON.parse(cheerio(el).html())
-    return json["@type"] === "Recipe"
+
+    if (Array.isArray(json)) {
+        const recipes = json.filter(isRecipe)
+        if (recipes.length) {
+            return recipes[0]
+        }
+    } else
+    if (isRecipe(json)) {
+        return json
+    }
+    return null
 }
 
 const parse = (url) => {
     return new Promise(async (resolve, reject) => {
         try {
-            const resp = await axios.get(url)
+            const resp = await axios.get(url, {
+                headers : {
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:72.0) Gecko/20100101 Firefox/72.0'
+                }
+            })
             const $ = cheerio.load(resp.data)
             const scripts = $('script[type*="ld+json"]')
-            const firstRecipe = scripts.filter(isRecipe)[0]
-            return firstRecipe
-                ? resolve(cheerio(firstRecipe).html())
+            const recipes = scripts.map(extractRecipe).filter(r => r !== null)
+            return recipes.length
+                ? resolve(JSON.stringify(recipes[0]))
                 : reject(errors.NO_RECIPE_DATA)
         }
         catch(err) {
+            console.log(err)
             return reject(errors.UNKNOWN_ERROR)
         }
     })
@@ -33,6 +54,7 @@ const extractRecipeData = (url) => {
     const worker = new Worker(__filename, {
         workerData: url
     })
+    worker.stdout.on('data', console.log)
     return new Promise((resolve, reject) => {
         worker.on('message', (data) => {
             if (data.error) {
