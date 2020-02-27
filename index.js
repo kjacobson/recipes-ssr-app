@@ -11,7 +11,7 @@ const fastifySecureSession = require('fastify-secure-session')
 const fastifyStatic = require('fastify-static')
 const fastifyBody = require('fastify-formbody')
 
-const { head, footer, singleRecipe, showPage, importPage } = require('./templates')
+const { head, footer, singleRecipe, showPage, importPage, importRecipeNav } = require('./templates')
 const extractRecipeData = require('./scrape')
 const errors = require('./errors')
 
@@ -79,7 +79,12 @@ app.decorateReply('getFlash', getFlash)
 
 app.get('/recipes/', async (req, reply) => {
     reply.type('text/html')
-    reply.res.write(head('en', 'All recipes', 'All recipes'))
+    reply.res.write(head({
+        lang: 'en',
+        title: 'All recipes',
+        h1: 'All recipes',
+        nav: importRecipeNav()
+    }))
     axios.get('http://localhost:3004/recipes?offset=0&count=20').then(async (response) => {
         for (const recipe of response.data) {
             reply.res.write(await singleRecipe(recipe.id, recipe.json, true))

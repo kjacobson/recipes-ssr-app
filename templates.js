@@ -42,7 +42,7 @@ const asyncH = async (strings, ...values) => {
     })
 }
 
-const head = (lang, title, h1) => {
+const head = ({lang, title, h1, nav}) => {
     return H`
         <!doctype html>
         <html lang="${lang}">
@@ -55,6 +55,9 @@ const head = (lang, title, h1) => {
                 <link rel="stylesheet" href="/index.css">
             </head>
             <body>
+                <nav>
+                    ${ nav ? nav : '' }
+                </nav>
                 ${ h1 ? H`
                 <header>
                     <h1>!${h1}</h1>
@@ -73,9 +76,22 @@ const ingredient = (ingredient) => {
 }
 
 const ingredientList = (ingredients) => {
-    return H`<ul>
-        ${ ingredients.map(ingredient) }
-    </ul>`
+    return H`
+        <h2>Ingredients:</h2>
+        <ul>
+            ${ ingredients.map(ingredient) }
+        </ul>
+    `
+}
+
+const instructions = (instructions) => {
+    return H`
+        <h2>Instructions:</h2>
+        ${Array.isArray(instructions)
+            ? H`<ol>${instructions.map(instructionItem)}</ol>`
+            : H`<p>!${instructions}</p>`
+        }
+    `
 }
 
 const instructionItem = (instruction) => {
@@ -86,9 +102,11 @@ const instructionItem = (instruction) => {
 
 const singleRecipe = (recipeId, recipe, asynchronous=false) => {
     let image = recipe.image
-    debugger
     if (Array.isArray(image) && image.length) {
         image = image[0]
+    }
+    if (image.url) {
+        image = image.url
     }
     return (asynchronous ? asyncH : H)`
         <article>
@@ -105,16 +123,12 @@ const singleRecipe = (recipeId, recipe, asynchronous=false) => {
 
             <p>!${recipe.description || ''}</p>
 
-            <h2>Ingredients:</h2>
             ${recipe.recipeIngredient 
                 ? ingredientList(recipe.recipeIngredient)
                 : ''
             }
 
-            <h2>Instructions:</h2>
-            <ol>
-                ${recipe.recipeInstructions ? recipe.recipeInstructions.map(instructionItem) : ''}
-            </ol>
+            ${recipe.recipeInstructions ? instructions(recipe.recipeInstructions) : ''}
             <a href="!${recipe.url}" target="_blank" rel="noopener" title="View original">
                 !${recipe.url}
             </a>
@@ -122,9 +136,25 @@ const singleRecipe = (recipeId, recipe, asynchronous=false) => {
     `
 }
 
+const importRecipeNav = () => {
+    return `
+        <a href="/recipes/import" title="Import a recipe from the web">
+            ⊕ Import a recipe
+        </a>
+    `
+}
+
+const allRecipesNav = () => {
+    return `
+        <a href="/recipes" title="See all saved recipes">
+           ⭠ All recipes
+        </a>
+    `
+}
+
 const showPage = (recipe) => {
     return H`
-        ${head('en', recipe.json.name)}
+        ${head({lang: 'en', title: recipe.json.name, nav: allRecipesNav()})}
         ${singleRecipe(recipe.id, recipe.json)}
         ${footer()}
     `
@@ -136,14 +166,37 @@ const errorMessage = (error) => {
 
 const importPage = (errors) => {
     return H`
-        ${head('en', 'Import a new recipe', 'Import a recipe from the web')}
-        ${errors ? errors.map(errorMessage) : ''}
+        ${head({
+            lang: 'en',
+            title: 'Import a new recipe',
+            h1: 'Import a recipe from the web',
+            nav: allRecipesNav()
+        })}
         <form action="/recipes" method="POST">
-            <input type="url" name="url"
-                required
+            ${errors ? errors.map(errorMessage) : ''}
+            <label for="importUrlInput">Paste your recipe URL here:</label>
+            <input type="url" name="url" id="importUrlInput"
+                required size="60"
                 placeholder="https://www.saveur.com/article/Recipes/Creamed-Brussels-Sprouts/"
             />
             <button type="submit">Import</button>
+            <h3>Some sites we can definitely import from:</h3>
+            <ul>
+                <li>bon appétit</li>
+                <li>allrecipes</li>
+                <li>Food &amp; Wine</li>
+                <li>the kitchn</li>
+                <li>tasty.co</li>
+                <li>myrecipes</li>
+                <li>Epicurious</li>
+            </ul>
+
+            <h3>Some sites we can't import from:</h3>
+            <ul>
+                <li>Saveur</li>
+                <li>NYTimes</li>
+                <li>BBC Good Food</li>
+            </ul>
         </form>
         ${footer()}
     `
@@ -151,7 +204,12 @@ const importPage = (errors) => {
 
 const errorPage = (message) => {
     return H`
-        ${head('en', 'Error', 'Something went wrong')}
+        ${head({
+            lang: 'en',
+            title: 'Error',
+            h1: 'Something went wrong',
+            nav: allRecipesNav()
+        })}
         <p>${message}</p>
         ${footer()}
     `
@@ -163,5 +221,6 @@ module.exports = {
     footer,
     singleRecipe,
     importPage,
-    showPage
+    showPage,
+    importRecipeNav
 }
