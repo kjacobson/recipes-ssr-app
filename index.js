@@ -21,6 +21,7 @@ const {
     showPage,
     importPage,
     loginPage,
+    signupPage,
     importRecipeNav
 } = require('./templates')
 const extractRecipeData = require('./scrape')
@@ -164,6 +165,29 @@ app.post('/recipes', { preHandler: authenticationMiddleware }, (req, reply) => {
         })
 })
 
+app.get('/signup', (req, reply) => {
+    reply.type('text/html')
+    reply.send(signupPage())
+})
+
+app.post('/users', (req, reply) => {
+    const { email } = req.body
+    axios.post(apiUrlBase + '/users', {
+        email
+    }).then(response => {
+        const uuid = response.data
+        requestToken(uuid, email).then(token => {
+            reply.send('Check your email')
+        }, err => {
+            console.error(err)
+        })
+    }, err => {
+        console.error(err)
+        req.setFlash('error', err)
+        reply.redirect(303, '/signup')
+    })
+})
+
 app.get('/login', (req, reply) => {
     reply.type('text/html')
     reply.send(loginPage())
@@ -182,6 +206,12 @@ app.post('/login', (req, reply) => {
     }, err => {
 
     })
+})
+
+app.get('/logout', (req, reply) => {
+    req.session.delete()
+
+    reply.redirect(303, '/login')
 })
 
 app.get('/verify', (req, reply) => {

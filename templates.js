@@ -225,6 +225,34 @@ const loginPage = () => {
     `
 }
 
+const signupPage = () => {
+    return H`
+        ${head({
+            lang: 'en',
+            title: 'RecipeGrab Signup',
+            h1: 'Create a RecipeGrab account',
+            nav: '<a href="/">Home</a>'
+        })}
+        <form action="/users" method="POST">
+            <h3>All we need is your email address</h3>
+            <input
+                type="email"
+                name="email"
+                placeholder="foo@example.com"
+                size="60"
+                required
+            />
+            <button type="submit">Sign up</button>
+            <p>
+                We don&rsquo;t share your address with anyone,
+                we just need something to remember you by so you
+                find your saved recipes when you come back.
+            <p>
+        </form>
+        ${footer()}
+    `
+}
+
 const errorPage = (message) => {
     return H`
         ${head({
@@ -246,5 +274,6 @@ module.exports = {
     importPage,
     showPage,
     loginPage,
+    signupPage,
     importRecipeNav
 }
