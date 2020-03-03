@@ -11,11 +11,27 @@ const fastifySecureSession = require('fastify-secure-session')
 const fastifyStatic = require('fastify-static')
 const fastifyBody = require('fastify-formbody')
 
-const { head, footer, singleRecipe, showPage, importPage, importRecipeNav } = require('./templates')
+const config = require('./config.json')
+const { requestToken, validateToken } = require('./auth/index')
+
+const {
+    head,
+    footer,
+    singleRecipe,
+    showPage,
+    importPage,
+    loginPage,
+    importRecipeNav
+} = require('./templates')
 const extractRecipeData = require('./scrape')
 const errors = require('./errors')
 
-const port = 3002
+const cookieOptions = {
+    path: '/',
+    secure: true,
+    httpOnly: true
+}
+const apiUrlBase = `${config.api_protocol}://${config.api_host}`
 
 const app = fastify(
     {
@@ -24,7 +40,7 @@ const app = fastify(
         https: {
             allowHTTP1: true,
             key: fs.readFileSync(__dirname + '/server.key'),
-            cert: fs.readFileSync(__dirname + '/server.crt')
+            cert: fs.readFileSync(__dirname + '/server.crt') 
         }
     }
 )
@@ -32,24 +48,27 @@ app.register(helmet)
 app.register(fastifySecureSession, {
     // adapt this to point to the directory where secret-key is located
     key: fs.readFileSync(path.join(__dirname, 'secret-key')),
-    cookie: {
-        path: '/'
-    }
+    cookie: cookieOptions
 })
-app.register(fastifyStatic, {
-    root: path.join(__dirname, 'static')
-})
+if (process.env.NODE_ENV !== 'production') {
+    app.register(fastifyStatic, {
+        root: path.join(__dirname, 'static')
+    })
+}
 app.register(fastifyBody)
 // app.register(rTracer.fastifyMiddleware())
 
 
-const saveRecipe = async (url, title, json) => {
-    return axios.post('http://localhost:3004/recipes/', {
-        url,
-        title,
-        json
-    })
+const authenticationMiddleware = (request, reply, next) => {
+    const uuid = request.session.get('uuid')
+    if (!uuid) {
+        return reply.redirect(401, '/login')
+    } else {
+        request.uuid = uuid
+        next()
+    }
 }
+    
 
 const getFlash = function(type) {
     let flash = this.session.get('flash')
@@ -75,9 +94,15 @@ app.decorateRequest('setFlash', function(type='info', val) {
 app.decorateRequest('getFlash', getFlash)
 app.decorateReply('getFlash', getFlash)
 
+const saveRecipe = async (url, title, json) => {
+    return axios.post(apiUrlBase + '/recipes/', {
+        url,
+        title,
+        json
+    })
+}
 
-
-app.get('/recipes/', async (req, reply) => {
+app.get('/recipes/', { preHandler: authenticationMiddleware }, (req, reply) => {
     reply.type('text/html')
     reply.res.write(head({
         lang: 'en',
@@ -85,7 +110,7 @@ app.get('/recipes/', async (req, reply) => {
         h1: 'All recipes',
         nav: importRecipeNav()
     }))
-    axios.get('http://localhost:3004/recipes?offset=0&count=20').then(async (response) => {
+    axios.get(`${apiUrlBase}/users/${req.uuid}/recipes?offset=0&count=20`).then(async (response) => {
         for (const recipe of response.data) {
             reply.res.write(await singleRecipe(recipe.id, recipe.json, true))
         }
@@ -93,13 +118,16 @@ app.get('/recipes/', async (req, reply) => {
         reply.sent = true
         reply.res.end()
     }, (err) => {
-        reply.send(errors.UNKNOWN_ERROR)
+        console.error(err)
+        reply.res.write(errors.UNKNOWN_ERROR)
+        reply.sent = true
+        reply.res.end()
     })
 })
 
-app.get('/recipes/:id', (req, reply, params) => {
+app.get('/recipes/:id', { preHandler: authenticationMiddleware }, (req, reply, params) => {
     reply.type('text/html')
-    axios.get(`http://localhost:3004/recipes/${req.params.id}/`).then(response => {
+    axios.get(`${apiUrlBase}/recipes/${req.params.id}/`).then(response => {
         const recipe = response.data
         reply.send(showPage(recipe))
     }, (err) => {
@@ -107,7 +135,7 @@ app.get('/recipes/:id', (req, reply, params) => {
     })
 })
 
-app.get('/recipes/import', (req, reply) => {
+app.get('/recipes/import', { preHandler: authenticationMiddleware }, (req, reply) => {
     const errors = req.getFlash('error')
 
     reply.type('text/html')
@@ -116,7 +144,7 @@ app.get('/recipes/import', (req, reply) => {
     )
 })
 
-app.post('/recipes', (req, reply) => {
+app.post('/recipes', { preHandler: authenticationMiddleware }, (req, reply) => {
     const { url } = req.body
     extractRecipeData(url)
         .then((recipe) => {
@@ -136,12 +164,48 @@ app.post('/recipes', (req, reply) => {
         })
 })
 
-app.listen(port, (error) => {
+app.get('/login', (req, reply) => {
+    reply.type('text/html')
+    reply.send(loginPage())
+})
+
+app.post('/login', (req, reply) => {
+    const { email } = req.body
+    axios.get(apiUrlBase + '/users-by-email?email=' + email).then(response => {
+        const uuid = response.data
+        requestToken(uuid, email).then(token => {
+            console.log(token)
+            reply.send('Check your email')
+        }, err => {
+            console.error(err)
+        })
+    }, err => {
+
+    })
+})
+
+app.get('/verify', (req, reply) => {
+    const token = req.query.token
+    if (token) {
+        validateToken(token, req.hostname).then((uuid) => {
+            req.session.set('uuid', uuid)
+            reply.redirect(303, '/recipes')
+        }, err => {
+            console.error(err)
+            reply.code(401).type('text/html').send("That login link looks to be invalid")
+        })
+    } else {
+        console.log("no token")
+        reply.code(404).type('text/html').send("That login link looks to be invalid")
+    }
+})
+
+app.listen(config.port, (error) => {
     if (error) {
         app.log.error(error)
         return process.exit(1)
     } else {
-        app.log.info('Listening on port: ' + port + '.')
+        app.log.info('Listening on port: ' + config.port + '.')
     }
 
 //     process.on('SIGINT', () => {

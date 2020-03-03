@@ -118,7 +118,7 @@ const singleRecipe = (recipeId, recipe, asynchronous=false) => {
             <em>!${recipe.author ? recipe.author.name : ''}</em>
 
             ${image ?
-                H`<img src="!${image}" alt="" />` : ''
+                H`<img src="!${image}" loading="lazy" alt="" />` : ''
             }
 
             <p>!${recipe.description || ''}</p>
@@ -202,6 +202,29 @@ const importPage = (errors) => {
     `
 }
 
+const loginPage = () => {
+    return H`
+        ${head({
+            lang: 'en',
+            title: 'Log in to RecipeGrab',
+            h1: 'Welcome back!',
+            nav: '<a href="/">Home</a>'
+        })}
+        <form action="/login" method="POST">
+            <h3>Enter your email and get a one&#45;time login link</h3>
+            <input
+                type="email"
+                name="email"
+                placeholder="foo@example.com"
+                size="60"
+                required
+            />
+            <button type="submit">Email me</button>
+        </form>
+        ${footer()}
+    `
+}
+
 const errorPage = (message) => {
     return H`
         ${head({
@@ -222,5 +245,6 @@ module.exports = {
     singleRecipe,
     importPage,
     showPage,
+    loginPage,
     importRecipeNav
 }
