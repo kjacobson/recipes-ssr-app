@@ -32,7 +32,7 @@ const cookieOptions = {
     secure: true,
     httpOnly: true
 }
-const apiUrlBase = `${config.api_protocol}://${config.api_host}`
+const apiUrlBase = `${config.api.protocol}://${config.api.host}`
 
 const app = fastify(
     {
@@ -40,15 +40,15 @@ const app = fastify(
         ignoreTrailingSlash: true,
         https: {
             allowHTTP1: true,
-            key: fs.readFileSync(__dirname + '/server.key'),
-            cert: fs.readFileSync(__dirname + '/server.crt') 
+            key: fs.readFileSync(config.ssl.key_loc),
+            cert: fs.readFileSync(config.ssl.cert_loc)
         }
     }
 )
 app.register(helmet)
 app.register(fastifySecureSession, {
     // adapt this to point to the directory where secret-key is located
-    key: fs.readFileSync(path.join(__dirname, 'secret-key')),
+    key: fs.readFileSync(config.cookie_secret_loc),
     cookie: cookieOptions
 })
 if (process.env.NODE_ENV !== 'production') {
@@ -119,7 +119,7 @@ app.get('/recipes/', { preHandler: authenticationMiddleware }, (req, reply) => {
         reply.sent = true
         reply.res.end()
     }, (err) => {
-        console.error(err)
+        req.log.error(err)
         reply.res.write(errors.UNKNOWN_ERROR)
         reply.sent = true
         reply.res.end()
@@ -179,10 +179,10 @@ app.post('/users', (req, reply) => {
         requestToken(uuid, email).then(token => {
             reply.send('Check your email')
         }, err => {
-            console.error(err)
+            req.log.error(err)
         })
     }, err => {
-        console.error(err)
+        req.log.error(err)
         req.setFlash('error', err)
         reply.redirect(303, '/signup')
     })
@@ -198,10 +198,10 @@ app.post('/login', (req, reply) => {
     axios.get(apiUrlBase + '/users-by-email?email=' + email).then(response => {
         const uuid = response.data
         requestToken(uuid, email).then(token => {
-            console.log(token)
+            req.log.info(token)
             reply.send('Check your email')
         }, err => {
-            console.error(err)
+            req.log.error(err)
         })
     }, err => {
 
@@ -221,11 +221,11 @@ app.get('/verify', (req, reply) => {
             req.session.set('uuid', uuid)
             reply.redirect(303, '/recipes')
         }, err => {
-            console.error(err)
+            req.log.error(err)
             reply.code(401).type('text/html').send("That login link looks to be invalid")
         })
     } else {
-        console.log("no token")
+        req.log.info("no token")
         reply.code(404).type('text/html').send("That login link looks to be invalid")
     }
 })
@@ -259,9 +259,9 @@ const teardown = () => {
     app.log.info('Tearing down server')
     const logger = app.log
     app.close().then(() => {
-        console.info('Successfully closed server connection')
+        req.log.info('Successfully closed server connection')
     }, (err) => {
-        console.error('Error closing server connection')
+        req.log.error('Error closing server connection')
         process.exit(1)
     })
 }
