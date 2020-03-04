@@ -225,6 +225,23 @@ const loginPage = () => {
     `
 }
 
+const loginPendingPage = (email) => {
+    return H`
+        ${head({
+            lang: 'en',
+            title: 'Check your email',
+            h1: 'Check your email to complete verification',
+            nav: '<a href="/">Home</a>'
+        })}
+        <p>
+            We sent you an email containing a verification link to <strong>${email}</strong>.
+            If this email address is not correct, please
+            <a href="/login" title="Go back to the login page">go back to the login page</a>
+            and re-enter your email.
+        </p>
+    `
+}
+
 const signupPage = () => {
     return H`
         ${head({
@@ -274,6 +291,7 @@ module.exports = {
     importPage,
     showPage,
     loginPage,
+    loginPendingPage,
     signupPage,
     importRecipeNav
 }

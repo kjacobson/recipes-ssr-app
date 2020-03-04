@@ -21,6 +21,7 @@ const {
     showPage,
     importPage,
     loginPage,
+    loginPendingPage,
     signupPage,
     importRecipeNav
 } = require('./templates')
@@ -177,7 +178,8 @@ app.post('/users', (req, reply) => {
     }).then(response => {
         const uuid = response.data
         requestToken(uuid, email).then(token => {
-            reply.send('Check your email')
+            req.setFlash('email', email)
+            reply.redirect(303, '/login-pending')
         }, err => {
             req.log.error(err)
         })
@@ -189,8 +191,7 @@ app.post('/users', (req, reply) => {
 })
 
 app.get('/login', (req, reply) => {
-    reply.type('text/html')
-    reply.send(loginPage())
+    reply.type('text/html').send(loginPage())
 })
 
 app.post('/login', (req, reply) => {
@@ -199,13 +200,22 @@ app.post('/login', (req, reply) => {
         const uuid = response.data
         requestToken(uuid, email).then(token => {
             req.log.info(token)
-            reply.send('Check your email')
+            req.setFlash('email', email)
+            reply.redirect(303, '/login-pending')
         }, err => {
             req.log.error(err)
         })
     }, err => {
 
     })
+})
+
+app.get('/login-pending', (req, reply) => {
+    let email = req.getFlash('email')
+    if (email && email.length) {
+        email = email[0]
+    }
+    reply.type('text/html').send(loginPendingPage(email))
 })
 
 app.get('/logout', (req, reply) => {
@@ -230,38 +240,47 @@ app.get('/verify', (req, reply) => {
     }
 })
 
-app.listen(config.port, (error) => {
-    if (error) {
-        app.log.error(error)
-        return process.exit(1)
-    } else {
-        app.log.info('Listening on port: ' + config.port + '.')
-    }
+const start = () => {
+    return new Promise((resolve, reject) => {
+        app.listen(config.port, (error) => {
+            if (error) {
+                app.log.error(error)
+                return process.exit(1)
+            } else {
+                app.log.info('Listening on port: ' + config.port + '.')
+                resolve()
+            }
 
-//     process.on('SIGINT', () => {
-//         /**
-//          * We might see this signal in prod if pm2 restarts a process
-//          * due to high memory usage, but we'll rely on other monitoring
-//          * for this.
-//          *
-//          * If a process fails we won't see this.
-//          */
-//         app.log.info('SIGINT')
-//         teardown()
-//     })
-//     process.on('SIGTERM', () => {
-//         app.log.info('SIGTERM')
-//         teardown()
-//     })
-})
-
-const teardown = () => {
-    app.log.info('Tearing down server')
-    const logger = app.log
-    app.close().then(() => {
-        req.log.info('Successfully closed server connection')
-    }, (err) => {
-        req.log.error('Error closing server connection')
-        process.exit(1)
+        //     process.on('SIGINT', () => {
+        //         /**
+        //          * We might see this signal in prod if pm2 restarts a process
+        //          * due to high memory usage, but we'll rely on other monitoring
+        //          * for this.
+        //          *
+        //          * If a process fails we won't see this.
+        //          */
+        //         app.log.info('SIGINT')
+        //         teardown()
+        //     })
+        //     process.on('SIGTERM', () => {
+        //         app.log.info('SIGTERM')
+        //         teardown()
+        //     })
+        })
     })
 }
+
+const teardown = () => {
+    return new Promise((resolve, reject) => {
+        app.log.info('Tearing down server')
+        app.close().then(() => {
+            app.log.info('Successfully closed server connection')
+            resolve()
+        }, (err) => {
+            app.log.error('Error closing server connection')
+            process.exit(1)
+        })
+    })
+}
+
+module.exports = { start, teardown }

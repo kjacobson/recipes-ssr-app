@@ -1,5 +1,7 @@
+const assert = require('assert')
 const { setWorldConstructor } = require('cucumber')
 
+const server = require('../../index')
 const config = require('../../config')
 
 const URL_MAP = {
@@ -7,7 +9,8 @@ const URL_MAP = {
     signup : "/signup",
     login : "/login",
     logout : "/logout",
-    recipes : "/recipes"
+    recipes : "/recipes",
+    "check email" : "/login-pending"
 }
 
 const urlFromName = (pageName) => {
@@ -18,9 +21,10 @@ const urlFromName = (pageName) => {
 }
 
 class World {
-    async startup() {
-        this.browser = await puppeteer.launch({ headless: HEADLESS })
-        this.page = await this.browser.newPage()
+
+    constructor() {
+        this.server = server.start()
+        this.teardown = server.teardown
     }
 
     async goToPage(pageName) {
@@ -37,9 +41,18 @@ class World {
         await button.click()
     }
 
-    async verifyText(text, select) {
-
+    async shouldBeOnPage(pageName) {
+        await this.page.waitForNavigation()
+        assert.equal(await this.page.url(), urlFromName(pageName))
     }
+
+    async verifyElementText(selector, text) {
+        await this.page.waitForSelector(selector)
+        const element = await this.page.$(selector)
+        const textContent = await this.page.evaluate(element => element.textContent, element)
+        assert.equal(textContent, text)
+    }
+
 }
 
 setWorldConstructor(World)
