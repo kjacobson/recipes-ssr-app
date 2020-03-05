@@ -96,8 +96,8 @@ app.decorateRequest('setFlash', function(type='info', val) {
 app.decorateRequest('getFlash', getFlash)
 app.decorateReply('getFlash', getFlash)
 
-const saveRecipe = async (url, title, json) => {
-    return axios.post(apiUrlBase + '/recipes/', {
+const saveRecipe = async (userId, { url, title, json }) => {
+    return axios.post(apiUrlBase + `/users/${userId}/recipes/`, {
         url,
         title,
         json
@@ -151,7 +151,12 @@ app.post('/recipes', { preHandler: authenticationMiddleware }, (req, reply) => {
     extractRecipeData(url)
         .then((recipe) => {
             const { json, parsedJson } = recipe
-            return saveRecipe(url, parsedJson.name, json)
+            const data = {
+                url,
+                title: parsedJson.name,
+                json
+            }
+            return saveRecipe(req.uuid, data)
         })
         .then((response) => {
             if (response.data) {
@@ -161,6 +166,7 @@ app.post('/recipes', { preHandler: authenticationMiddleware }, (req, reply) => {
             }
         })
         .catch((err) => {
+            req.log.error(err)
             req.setFlash('error', err)
             reply.redirect(303, '/recipes/import')
         })
@@ -275,7 +281,7 @@ const teardown = () => {
         app.log.info('Tearing down server')
         app.close().then(() => {
             app.log.info('Successfully closed server connection')
-            resolve()
+            return resolve()
         }, (err) => {
             app.log.error('Error closing server connection')
             process.exit(1)

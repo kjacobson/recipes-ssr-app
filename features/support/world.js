@@ -10,20 +10,27 @@ const URL_MAP = {
     logout : "/logout",
     recipes : "/recipes",
     "check email" : "/login-pending",
-    "import recipe" : "/recipes/import"
+    "import recipe" : "/recipes/import",
+    "recipe details" : (recipeId) => {
+        return `/recipes/${recipeId}`
+    }
 }
 
-const urlFromName = (pageName) => {
+const urlFromName = (pageName, id) => {
     const protocol = config.use_ssl ? 'https://' : 'http://'
     const host = config.host
+    let path = URL_MAP[pageName]
+    if (typeof path === "function") {
+        path = path(id)
+    }
 
-    return protocol + host + URL_MAP[pageName]
+    return protocol + host + path
 }
 
 class World {
 
     async setSessionCookie(val) {
-        await this.page.setCookie({
+        return await this.page.setCookie({
             name: 'session',
             value: val,
             secure: true,
@@ -34,29 +41,29 @@ class World {
     }
 
     async goToPage(pageName) {
-        await this.page.goto(urlFromName(pageName));
+        return await this.page.goto(urlFromName(pageName));
     }
 
     async enterText(text, fieldName) {
         await this.page.waitForSelector(`input[name="${fieldName}"]`)
-        await this.page.type(`input[name="${fieldName}"]`, text)
+        return await this.page.type(`input[name="${fieldName}"]`, text)
     }
 
     async pressButton(text) {
         const [button] = await this.page.$x(`//button[contains(., '${text}')]`)
-        await button.click()
+        return await button.click()
     }
 
-    async shouldBeOnPage(pageName) {
+    async shouldBeOnPage(pageName, id) {
         await this.page.waitForNavigation()
-        assert.equal(await this.page.url(), urlFromName(pageName))
+        return assert.equal(await this.page.url(), urlFromName(pageName, id))
     }
 
     async verifyElementText(selector, text) {
         await this.page.waitForSelector(selector)
         const element = await this.page.$(selector)
         const textContent = await this.page.evaluate(element => element.textContent, element)
-        assert.equal(textContent, text)
+        return assert.equal(textContent.trim(), text)
     }
 
 }

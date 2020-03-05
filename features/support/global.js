@@ -26,6 +26,7 @@ module.exports = async () => {
         initialized = true
     }
     return {
+        nock : nock,
         mock : _mock,
         browser : _browser,
         page : _page,
