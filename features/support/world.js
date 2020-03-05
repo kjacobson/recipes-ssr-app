@@ -1,7 +1,6 @@
 const assert = require('assert')
 const { setWorldConstructor } = require('cucumber')
 
-const server = require('../../index')
 const config = require('../../config')
 
 const URL_MAP = {
@@ -10,7 +9,8 @@ const URL_MAP = {
     login : "/login",
     logout : "/logout",
     recipes : "/recipes",
-    "check email" : "/login-pending"
+    "check email" : "/login-pending",
+    "import recipe" : "/recipes/import"
 }
 
 const urlFromName = (pageName) => {
@@ -22,9 +22,15 @@ const urlFromName = (pageName) => {
 
 class World {
 
-    constructor() {
-        this.server = server.start()
-        this.teardown = server.teardown
+    async setSessionCookie(val) {
+        await this.page.setCookie({
+            name: 'session',
+            value: val,
+            secure: true,
+            httpOnly: true,
+            path: '/',
+            domain: 'localhost'
+        })
     }
 
     async goToPage(pageName) {
