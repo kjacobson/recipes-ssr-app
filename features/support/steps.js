@@ -49,19 +49,19 @@ Given('I am a logged-in user', async function() {
 })
 
 Given('A mocked {string} request to {string} responding with a {int} status and body:', async function(method, url, statusCode, response) {
-    this.mock[method](url).delay(500).reply(statusCode, response)
+    this.mock[method](url).delay(200).reply(statusCode, response)
 })
 
 Given('A mocked {string} {string} request', async function(requestType, method) {
     const mock = mockRequests[requestType][method]
     this.mock[method](mock.url)
-        .delay(500)
+        .delay(200)
         .reply(mock.statusCode, mock.responseBody)
 })
 
 Given('A mocked recipe scrape request', async function() {
     this.nock('https://www.simplyrecipes.com').get('/recipes/chile_verde/')
-        .replyWithFile(200, __dirname + '../mocks/mockrecipepage.html', {
+        .replyWithFile(200, __dirname + '/../mocks/mockrecipepage.html', {
             'Content-Type': 'text/html',
         })
 })

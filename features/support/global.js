@@ -2,7 +2,7 @@ const nock = require('nock')
 const puppeteer = require('puppeteer')
 
 const server = require('../../index')
-const config = require('../../config.json')
+const config = require('../../config.js')
 
 const HEADLESS = process.env.HEADLESS !== "false"
 const apiBaseUrl = config.api.protocol + '://' + config.api.host

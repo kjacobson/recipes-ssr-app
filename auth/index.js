@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken')
 
-const config = require('../config.json')
+const config = require('../config.js')
 const sendEmail = require('./mail')
 
 const loginSecretKey = config.auth_secret

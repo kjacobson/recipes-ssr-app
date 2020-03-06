@@ -11,7 +11,7 @@ const fastifySecureSession = require('fastify-secure-session')
 const fastifyStatic = require('fastify-static')
 const fastifyBody = require('fastify-formbody')
 
-const config = require('./config.json')
+const config = require('./config.js')
 const { requestToken, validateToken } = require('./auth/index')
 
 const {

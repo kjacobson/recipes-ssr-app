@@ -1,7 +1,7 @@
 const assert = require('assert')
 const { setWorldConstructor } = require('cucumber')
 
-const config = require('../../config')
+const config = require('../../config.js')
 
 const URL_MAP = {
     home : "/",

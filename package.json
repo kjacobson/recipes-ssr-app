@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node start-server.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npm run test:func",
     "test:func": "NODE_ENV=test cucumber-js --format json:cucumber_report.json"
   },
   "author": "",
