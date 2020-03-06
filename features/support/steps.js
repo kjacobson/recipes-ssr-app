@@ -48,20 +48,27 @@ Given('I am a logged-in user', async function() {
     return await this.setSessionCookie(mockUsers.userWithRecipes.session_cookie)
 })
 
-Given('A mocked {string} request to {string} responding with a {int} status and body:', async function(method, url, statusCode, response) {
+Given('a mocked {string} request to {string} responding with a {int} status and body:', async function(method, url, statusCode, response) {
     this.mock[method](url).delay(200).reply(statusCode, response)
 })
 
-Given('A mocked {string} {string} request', async function(requestType, method) {
+Given('a mocked {string} {string} request', async function(requestType, method) {
     const mock = mockRequests[requestType][method]
     this.mock[method](mock.url)
         .delay(200)
         .reply(mock.statusCode, mock.responseBody)
 })
 
-Given('A mocked recipe scrape request', async function() {
+Given('a mocked recipe scrape request', async function() {
     this.nock('https://www.simplyrecipes.com').get('/recipes/chile_verde/')
         .replyWithFile(200, __dirname + '/../mocks/mockrecipepage.html', {
+            'Content-Type': 'text/html',
+        })
+})
+
+Given('a mocked failed recipe scrape request', async function() {
+    this.nock('https://cooking.nytimes.com').get('/recipes/1020083-creamy-white-bean-and-fennel-casserole')
+        .replyWithFile(200, __dirname + '/../mocks/mockrecipenojson.html', {
             'Content-Type': 'text/html',
         })
 })
@@ -90,6 +97,14 @@ Then('I should be redirected to the {string} page for the {string} {string}', as
 
 Then('I should see an h1 with the text {string}', async function(text) {
     return await this.verifyElementText("h1", text)
+})
+
+Then('I should see the text {string} inside the element matching selector {string}', async function(text, selector) {
+    return await this.verifyElementText(selector, text)
+})
+
+Then('the field with the name {string} should be in a {string} state', async function(fieldName, validity) {
+    return await this.verifyFormFieldValidity(fieldName, validity)
 })
 
 AfterAll(async function() {

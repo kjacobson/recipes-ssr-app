@@ -66,6 +66,10 @@ class World {
         return assert.equal(textContent.trim(), text)
     }
 
+    async verifyFormFieldValidity(fieldName, validity) {
+        await this.page.waitForSelector(`input[name="${fieldName}"]:${validity}`)
+    }
+
 }
 
 setWorldConstructor(World)
