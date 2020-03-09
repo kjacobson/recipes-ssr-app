@@ -242,7 +242,7 @@ const loginPendingPage = (email) => {
     `
 }
 
-const signupPage = () => {
+const signupPage = (errors) => {
     return H`
         ${head({
             lang: 'en',
@@ -252,6 +252,7 @@ const signupPage = () => {
         })}
         <form action="/users" method="POST">
             <h3>All we need is your email address</h3>
+            ${errors ? errors.map(errorMessage) : ''}
             <input
                 type="email"
                 name="email"

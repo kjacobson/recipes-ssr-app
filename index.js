@@ -173,8 +173,10 @@ app.post('/recipes', { preHandler: authenticationMiddleware }, (req, reply) => {
 })
 
 app.get('/signup', (req, reply) => {
+    const errors = req.getFlash('error')
+
     reply.type('text/html')
-    reply.send(signupPage())
+    reply.send(signupPage(errors))
 })
 
 app.post('/users', (req, reply) => {
@@ -191,7 +193,7 @@ app.post('/users', (req, reply) => {
         })
     }, err => {
         req.log.error(err)
-        req.setFlash('error', err)
+        req.setFlash('error', errors.EMAIL_IN_USE)
         reply.redirect(303, '/signup')
     })
 })

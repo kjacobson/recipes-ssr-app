@@ -17,4 +17,13 @@ Feature: Sign up
     And I press the button with text "Sign up"
     Then the field with the name "email" should be in a "invalid" state
 
-  # Scenario: enter an email address that is already in use
+  Scenario: enter an email address that is already in use
+    Given I am on the "signup" page
+    And a mocked "post" request to "/users" responding with a 400 status and body:
+      """
+        "DUPLICATE_EMAIL"
+      """
+    When I enter the text "foobar@gmail" into the text field with the name "email"
+    And I press the button with text "Sign up"
+    Then I should be redirected to the "signup" page
+    And I should see the text "The email address you entered is already in use." inside the element matching selector "p.error"
