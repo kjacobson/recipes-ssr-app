@@ -23,7 +23,8 @@ const {
     loginPage,
     loginPendingPage,
     signupPage,
-    importRecipeNav
+    importRecipeNav,
+    errorPage
 } = require('./templates')
 const extractRecipeData = require('./scrape')
 const errors = require('./errors')
@@ -121,7 +122,7 @@ app.get('/recipes/', { preHandler: authenticationMiddleware }, (req, reply) => {
         reply.res.end()
     }, (err) => {
         req.log.error(err)
-        reply.res.write(errors.UNKNOWN_ERROR)
+        reply.res.write(errors.UNKNOWN_ERROR.message)
         reply.sent = true
         reply.res.end()
     })
@@ -133,7 +134,7 @@ app.get('/recipes/:id', { preHandler: authenticationMiddleware }, (req, reply, p
         const recipe = response.data
         reply.send(showPage(recipe))
     }, (err) => {
-        reply.send(errors.UNKNOWN_ERROR)
+        reply.code(errors.NOT_FOUND.code).send(errorPage(errors.NOT_FOUND.message))
     })
 })
 
@@ -162,7 +163,7 @@ app.post('/recipes', { preHandler: authenticationMiddleware }, (req, reply) => {
             if (response.data) {
                 reply.redirect(303, '/recipes/' + response.data.id)
             } else {
-                reply.send(errors.UNKNOWN_ERROR)
+                reply.send(errors.UNKNOWN_ERROR.message)
             }
         })
         .catch((err) => {
@@ -193,7 +194,7 @@ app.post('/users', (req, reply) => {
         })
     }, err => {
         req.log.error(err)
-        req.setFlash('error', errors.EMAIL_IN_USE)
+        req.setFlash('error', errors.EMAIL_IN_USE.message)
         reply.redirect(303, '/signup')
     })
 })

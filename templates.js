@@ -294,5 +294,6 @@ module.exports = {
     loginPage,
     loginPendingPage,
     signupPage,
-    importRecipeNav
+    importRecipeNav,
+    errorPage
 }

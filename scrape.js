@@ -38,14 +38,17 @@ const parse = (url) => {
             })
             const $ = cheerio.load(resp.data)
             const scripts = $('script[type*="ld+json"]')
+            if (!scripts || !scripts.length) {
+                return reject(errors.NO_RECIPE_DATA.message)
+            }
             const recipes = scripts.map(extractRecipe).filter(r => r !== null)
             return recipes.length
                 ? resolve(JSON.stringify(recipes[0]))
-                : reject(errors.NO_RECIPE_DATA)
+                : reject(errors.NO_RECIPE_DATA.message)
         }
         catch(err) {
             console.log(err)
-            return reject(errors.UNKNOWN_ERROR)
+            return reject(errors.FAILED_TO_FETCH.message)
         }
     })
 }
@@ -79,9 +82,9 @@ if (isMainThread) {
 } else {
     const url = workerData
     parse(url).then((recipeJson) => {
-        parentPort.postMessage(recipeJson || { error: true, message: errors.NO_RECIPE_DATA})
+        parentPort.postMessage(recipeJson || { error: true, message: errors.NO_RECIPE_DATA.message})
     }, (err) => {
-        parentPort.postMessage({ error: true, message: errors.NO_RECIPE_DATA})
+        parentPort.postMessage({ error: true, message: errors.NO_RECIPE_DATA.message})
     })
 }
 

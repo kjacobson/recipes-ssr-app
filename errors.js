@@ -1,7 +1,24 @@
-const NO_RECIPE_DATA = "No recipe data found."
-const FAILED_TO_FETCH = "The URL you entered could not be resolved."
-const UNKNOWN_ERROR = "An unknown error occurred."
-const NOT_FOUND = "No recipe was found matching that URL."
-const EMAIL_IN_USE = "The email address you entered is already in use."
+const errors = {
+    NO_RECIPE_DATA : {
+        message : "No recipe data found.",
+        code : 422
+    },
+    FAILED_TO_FETCH : {
+        message : "The URL you entered could not be resolved.",
+        code : 404
+    },
+    UNKNOWN_ERROR : {
+        message : "An unknown error occurred.",
+        code : 400
+    },
+    NOT_FOUND : {
+        message : "No recipe was found matching that URL.",
+        code : 404
+    },
+    EMAIL_IN_USE : {
+        message : "The email address you entered is already in use.",
+        code : 400
+    }
+}
 
-module.exports = { NO_RECIPE_DATA, UNKNOWN_ERROR, NOT_FOUND, FAILED_TO_FETCH, EMAIL_IN_USE }
+module.exports = errors

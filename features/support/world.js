@@ -1,4 +1,4 @@
-const assert = require('assert')
+const expect = require('chai').expect
 const { setWorldConstructor } = require('cucumber')
 
 const config = require('../../config.js')
@@ -40,8 +40,8 @@ class World {
         })
     }
 
-    async goToPage(pageName) {
-        return await this.page.goto(urlFromName(pageName));
+    async goToPage(pageName, id) {
+        return await this.page.goto(urlFromName(pageName, id));
     }
 
     async enterText(text, fieldName) {
@@ -56,14 +56,14 @@ class World {
 
     async shouldBeOnPage(pageName, id) {
         await this.page.waitForNavigation()
-        return assert.equal(await this.page.url(), urlFromName(pageName, id))
+        return expect(urlFromName(pageName, id)).equal(await this.page.url())
     }
 
     async verifyElementText(selector, text) {
         await this.page.waitForSelector(selector)
         const element = await this.page.$(selector)
         const textContent = await this.page.evaluate(element => element.textContent, element)
-        return assert.equal(textContent.trim(), text)
+        return expect(textContent.trim()).to.contain(text)
     }
 
     async verifyFormFieldValidity(fieldName, validity) {
