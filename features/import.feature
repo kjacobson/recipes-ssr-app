@@ -4,12 +4,12 @@ Feature: Import a recipe
     Given I am a logged-in user
     And I am on the "import recipe" page
     And a mocked recipe scrape request
-    And a mocked "create recipe" "post" request
-    And a mocked "recipe details" "get" request
+    And a mocked create recipe POST request
+    And a mocked "get" request for the "scraped recipe"
     Then I should see an h1 with the text "Import a recipe from the web"
     When I enter the text "https://www.simplyrecipes.com/recipes/chile_verde/" into the text field with the name "url"
     And I press the button with text "Import"
-    Then I should be redirected to the "recipe details" page for the "second" "recipe"
+    Then I should be redirected to the "recipe details" page for the "scraped recipe"
     And I should see an h1 with the text "Chile Verde"
 
   Scenario: enter URL without JSON-LD
