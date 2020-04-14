@@ -54,24 +54,6 @@ Given('a mocked {string} request for the {string}', async function(method, mockN
         .reply(mock.statusCode, mock.responseBody)
 })
 
-Given('a mocked recipe scrape request', async function() {
-    this.nock('https://www.simplyrecipes.com').get('/recipes/chile_verde/')
-        .replyWithFile(200, __dirname + '/../mocks/mockrecipepage.html', {
-            'Content-Type': 'text/html',
-        })
-})
-
-Given('a mocked failed recipe scrape request', async function() {
-    this.nock('https://cooking.nytimes.com').get('/recipes/1020083-creamy-white-bean-and-fennel-casserole')
-        .replyWithFile(200, __dirname + '/../mocks/mockrecipenojson.html', {
-            'Content-Type': 'text/html',
-        })
-})
-
-Given('a mocked request for an external page that can\'t be found', async function() {
-    this.nock('http://cooking.nytimes.com').get('/foo')
-        .reply(404)
-})
 
 Given(/^I am on the "(.*)" page$/, async function(pageName) {
     return await this.goToPage(pageName)
