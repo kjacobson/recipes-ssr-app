@@ -1,5 +1,5 @@
 const {
-  Worker, isMainThread, parentPort, workerData
+  Worker, isMainThread, parentPort, workerData, SHARE_ENV
 } = require('worker_threads');
 const cheerio = require('cheerio')
 const axios = require('axios')
@@ -55,7 +55,8 @@ const parse = (url) => {
 
 const extractRecipeData = (url) => {
     const worker = new Worker(__filename, {
-        workerData: url
+        workerData: url,
+        env: SHARE_ENV
     })
     worker.stdout.on('data', console.log)
     return new Promise((resolve, reject) => {
@@ -80,6 +81,22 @@ const extractRecipeData = (url) => {
 if (isMainThread) {
     module.exports = extractRecipeData
 } else {
+    if (process.env.NODE_ENV === 'test') {
+        const nock = require('nock')
+
+        nock('https://www.simplyrecipes.com').get('/recipes/chile_verde/')
+            .replyWithFile(200, __dirname + '/features/mocks/mockrecipepage.html', {
+                'Content-Type': 'text/html',
+            })
+        nock('https://cooking.nytimes.com').get('/recipes/1020083-creamy-white-bean-and-fennel-casserole')
+            .replyWithFile(200, __dirname + '/features/mocks/mockrecipenojson.html', {
+                'Content-Type': 'text/html',
+            })
+
+        nock('http://cooking.nytimes.com').get('/foo')
+            .reply(404)
+    }
+
     const url = workerData
     parse(url).then((recipeJson) => {
         parentPort.postMessage(recipeJson || { error: true, message: errors.NO_RECIPE_DATA.message})

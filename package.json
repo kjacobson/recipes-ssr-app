@@ -5,8 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "node start-server.js",
-    "test": "npm run test:func",
-    "test:func": "NODE_ENV=test cucumber-js --format json:cucumber_report.json"
+    "test": "NODE_ENV=test npm run test:func",
+    "test:func": "./func.sh",
+    "test:func:only": "NODE_ENV=test cucumber-js --format json:cucumber_report.json -t @only -t 'not @skip'",
+    "test:func:all": "NODE_ENV=test cucumber-js --format json:cucumber_report.json -t 'not @skip'"
   },
   "author": "",
   "license": "ISC",
