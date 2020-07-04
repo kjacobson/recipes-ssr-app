@@ -2,7 +2,6 @@
 
 const path = require('path')
 const fs = require('fs')
-const https = require('https')
 const fastify = require('fastify')
 const axios = require('axios')
 const helmet = require('fastify-helmet')
@@ -36,17 +35,11 @@ const cookieOptions = {
 }
 const apiUrlBase = `${config.api.protocol}://${config.api.host}`
 
-const app = fastify(
-    {
-        logger: true,
-        ignoreTrailingSlash: true,
-        https: {
-            allowHTTP1: true,
-            key: fs.readFileSync(config.ssl.key_loc),
-            cert: fs.readFileSync(config.ssl.cert_loc)
-        }
-    }
-)
+const app = fastify({
+    logger: true,
+    ignoreTrailingSlash: true,
+})
+
 app.register(helmet)
 app.register(fastifySecureSession, {
     // adapt this to point to the directory where secret-key is located
@@ -106,7 +99,7 @@ const saveRecipe = async (userId, { url, title, json }) => {
 }
 
 app.get('/recipes/', { preHandler: authenticationMiddleware }, (req, reply) => {
-    reply.type('text/html')
+    reply.res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
     reply.res.write(head({
         lang: 'en',
         title: 'All recipes',
