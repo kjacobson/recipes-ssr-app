@@ -4,11 +4,11 @@ const path = require('path')
 const fs = require('fs')
 const fastify = require('fastify')
 const axios = require('axios')
-const helmet = require('fastify-helmet')
+const helmet = require('@fastify/helmet')
 const rTracer = require('cls-rtracer')
-const fastifySecureSession = require('fastify-secure-session')
-const fastifyStatic = require('fastify-static')
-const fastifyBody = require('fastify-formbody')
+const fastifySecureSession = require('@fastify/secure-session')
+const fastifyStatic = require('@fastify/static')
+const fastifyBody = require('@fastify/formbody')
 
 const config = require('./config.js')
 const { requestToken, validateToken } = require('./auth/index')
@@ -60,7 +60,7 @@ const authenticationMiddleware = (request, reply, next) => {
     if (!uuid) {
         return reply.redirect(401, '/login')
     } else {
-        request.uuid = uuid
+        request.uuid = uuid.id
         next()
     }
 }
@@ -99,8 +99,8 @@ const saveRecipe = async (userId, { url, title, json }) => {
 }
 
 app.get('/recipes/', { preHandler: authenticationMiddleware }, (req, reply) => {
-    reply.res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
-    reply.res.write(head({
+    reply.raw.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+    reply.raw.write(head({
         lang: 'en',
         title: 'All recipes',
         h1: 'All recipes',
@@ -108,16 +108,16 @@ app.get('/recipes/', { preHandler: authenticationMiddleware }, (req, reply) => {
     }))
     axios.get(`${apiUrlBase}/users/${req.uuid}/recipes?offset=0&count=20`).then(async (response) => {
         for (const recipe of response.data) {
-            reply.res.write(await singleRecipe(recipe.id, recipe.json, true))
+            reply.raw.write(await singleRecipe(recipe.id, recipe.json, true))
         }
-        reply.res.write(footer())
+        reply.raw.write(footer())
         reply.sent = true
-        reply.res.end()
+        reply.raw.end()
     }, (err) => {
         req.log.error(err)
-        reply.res.write(errors.UNKNOWN_ERROR.message)
+        reply.raw.write(errors.UNKNOWN_ERROR.message)
         reply.sent = true
-        reply.res.end()
+        reply.raw.end()
     })
 })
 
@@ -177,7 +177,7 @@ app.post('/users', (req, reply) => {
     const { email } = req.body
     axios.post(apiUrlBase + '/users', {
         email
-    }).then(response => {
+    }, { proxy: false }).then(response => {
         const uuid = response.data
         requestToken(uuid, email).then(token => {
             req.setFlash('email', email)
@@ -208,7 +208,9 @@ app.post('/login', (req, reply) => {
             req.log.error(err)
         })
     }, err => {
-
+        req.log.error(err)
+        req.setFlash('error', err)
+        reply.redirect(303, '/login')
     })
 })
 
@@ -244,7 +246,7 @@ app.get('/verify', (req, reply) => {
 
 const start = () => {
     return new Promise((resolve, reject) => {
-        app.listen(config.port, (error) => {
+        app.listen(config.port, config.host, (error) => {
             if (error) {
                 app.log.error(error)
                 return process.exit(1)

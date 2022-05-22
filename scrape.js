@@ -11,8 +11,8 @@ const isRecipe = (item) => {
     return item["@type"] === "Recipe"
 }
 
-const extractRecipe = (i, el) => {
-    const json = JSON.parse(cheerio(el).html())
+const extractRecipe = ($) => (i, el) => {
+    const json = JSON.parse($(el).html())
 
     if (Array.isArray(json)) {
         const recipes = json.filter(isRecipe)
@@ -41,7 +41,8 @@ const parse = (url) => {
             if (!scripts || !scripts.length) {
                 return reject(errors.NO_RECIPE_DATA.message)
             }
-            const recipes = scripts.map(extractRecipe).filter(r => r !== null)
+            const extractor = extractRecipe($)
+            const recipes = scripts.map(extractor).filter(r => r !== null)
             return recipes.length
                 ? resolve(JSON.stringify(recipes[0]))
                 : reject(errors.NO_RECIPE_DATA.message)

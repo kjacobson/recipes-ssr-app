@@ -31,7 +31,7 @@ const init = async () => {
 }
 
 const emailContents = (email, token) => {
-    const url  = `https://${config.host}/verify?token=${token}`
+    const url  = `${config.protocol}://${config.host}${config.port ? `:${config.port}` : ''}/verify?token=${token}`
     
     return emailTemplate(url)
 }

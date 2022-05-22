@@ -6,8 +6,8 @@ const sendEmail = require('./mail')
 const loginSecretKey = config.auth_secret
 
 const jwtOptions = {
-    issuer: config.host,
-    audience: config.host,
+    issuer: `${config.host}:${config.port}`,
+    audience: `${config.host}:${config.port}`,
     algorithm: 'HS256',
     expiresIn: '15m',
 }
