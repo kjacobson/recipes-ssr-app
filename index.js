@@ -2,6 +2,7 @@
 
 const path = require('path')
 const fs = require('fs')
+const querystring = require('querystring')
 const fastify = require('fastify')
 const axios = require('axios')
 const helmet = require('@fastify/helmet')
@@ -33,7 +34,7 @@ const cookieOptions = {
     secure: true,
     httpOnly: true
 }
-const apiUrlBase = `${config.api.protocol}://${config.api.host}`
+const apiUrlBase = `${config.api.protocol}://${config.api.host}:${config.api.port}`
 
 const app = fastify({
     logger: true,
@@ -60,7 +61,7 @@ const authenticationMiddleware = (request, reply, next) => {
     if (!uuid) {
         return reply.redirect(401, '/login')
     } else {
-        request.uuid = uuid.id
+        request.uuid = uuid
         next()
     }
 }
@@ -177,7 +178,7 @@ app.post('/users', (req, reply) => {
     const { email } = req.body
     axios.post(apiUrlBase + '/users', {
         email
-    }, { proxy: false }).then(response => {
+    }).then(response => {
         const uuid = response.data
         requestToken(uuid, email).then(token => {
             req.setFlash('email', email)
@@ -198,7 +199,7 @@ app.get('/login', (req, reply) => {
 
 app.post('/login', (req, reply) => {
     const { email } = req.body
-    axios.get(apiUrlBase + '/users-by-email?email=' + email).then(response => {
+    axios.get(apiUrlBase + `/users-by-email?${querystring.stringify({ email })}`).then(response => {
         const uuid = response.data
         requestToken(uuid, email).then(token => {
             req.log.info(token)
@@ -232,8 +233,17 @@ app.get('/verify', (req, reply) => {
     const token = req.query.token
     if (token) {
         validateToken(token, req.hostname).then((uuid) => {
+            uuid = uuid.id ? uuid.id : uuid
             req.session.set('uuid', uuid)
-            reply.redirect(303, '/recipes')
+            axios.put(apiUrlBase + `/users/${uuid}`, {
+                verified: true
+            }).then(response => {
+                reply.redirect(303, '/recipes')
+            }, err => {
+                req.log.error(err)
+                req.setFlash('error', errors.UNKNOWN_ERROR.message)
+                reply.redirect(303, '/signup')
+            })
         }, err => {
             req.log.error(err)
             reply.code(401).type('text/html').send("That login link looks to be invalid")
