@@ -2,10 +2,15 @@ const env = process.env.NODE_ENV || 'development'
 
 module.exports = {
     port : process.env.PORT || 3002,
-    host : process.env.HOST || "127.0.0.1",
-    protocol: process.env.PROTOCAL || 'http',
+    host : process.env.HOST || "localhost",
+    // we need to make sure the JWT is issued from the hostname
+    // used to access the site in the browser
+    external_port: process.env.EXTERNAL_PORT || 3002,
+    external_host: process.env.EXTERNAL_HOST || "localhost",
+    protocol: process.env.PROTOC0L || 'http',
     api : {
-        host: process.env.API_HOST || "127.0.01:3004",
+        host: process.env.API_HOST || "localhost",
+        port: process.env.API_PORT || "3004",
         protocol: process.env.API_PROTOCOL || "http"
     },
     smtp : {
