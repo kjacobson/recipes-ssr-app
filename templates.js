@@ -152,6 +152,30 @@ const allRecipesNav = () => {
     `
 }
 
+const homePage = () => {
+    return H`
+        ${head({
+            lang: 'en',
+            title: 'RecipeGrab',
+            h1: 'Welcome (back?) to RecipeGrab!',
+            nav: '<a href="/">Home</a>'
+        })}
+        <form action="/loginsignup" method="POST">
+            <h3>Enter your email and get a one&#45;time login link</h3>
+            <p>If you don't have an account yet, we'll create one for you.</p>
+            <input
+                type="email"
+                name="email"
+                placeholder="foo@example.com"
+                size="60"
+                required
+            />
+            <button type="submit">Email me</button>
+        </form>
+        ${footer()}
+    `
+}
+
 const showPage = (recipe) => {
     return H`
         ${head({lang: 'en', title: recipe.json.name, nav: allRecipesNav()})}
@@ -288,6 +312,7 @@ const errorPage = (message) => {
 module.exports = {
     head,
     footer,
+    homePage,
     singleRecipe,
     importPage,
     showPage,

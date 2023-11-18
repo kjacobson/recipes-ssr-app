@@ -15,13 +15,13 @@ let _server
 
 module.exports = async () => {
     if (!initialized) {
+        _server = await server.start()
         _mock = nock(apiBaseUrl)
         _browser = await puppeteer.launch({
             headless: HEADLESS,
             ignoreHTTPSErrors: true
         })
         _page = await _browser.newPage()
-        _server = await server.start()
 
         initialized = true
     }

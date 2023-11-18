@@ -18,21 +18,27 @@ const init = async () => {
             }
         })
     } else {
-        transporter = nodemailer.createTransport({
+        const transportConfig = {
+            name: 'www.recipegrab.com',
             host: config.smtp.host,
             port: config.smtp.port,
             secure: (config.smtp.port === 465),
+            secureConnection: (config.smtp.port === 465),
             auth: {
                 user: config.smtp.user,
                 pass: config.smtp.password
-            }
-        })
+            },
+            logger: true,
+            debug: true,
+        }
+        console.log("Initializing email transport with config:", transportConfig)
+        transporter = nodemailer.createTransport(transportConfig)
     }
 }
 
 const emailContents = (email, token) => {
     const url  = `${config.protocol}://${config.external_host}${config.external_port ? `:${config.external_port}` : ''}/verify?token=${token}`
-    
+    console.debug("Login URL:", url)
     return emailTemplate(url)
 }
 
@@ -55,6 +61,7 @@ const sendEmail = (email, token) => {
             return resolve()
         }
         catch(err) {
+            console.error("Something went wrong sending an email", err)
             return reject(err)
         }
     })

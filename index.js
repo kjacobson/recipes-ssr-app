@@ -17,6 +17,7 @@ const { requestToken, validateToken } = require('./auth/index')
 const {
     head,
     footer,
+    homePage,
     singleRecipe,
     showPage,
     importPage,
@@ -41,17 +42,27 @@ const app = fastify({
     ignoreTrailingSlash: true,
 })
 
-app.register(helmet)
+app.register(helmet, {
+  enableCSPNonces: true,
+  contentSecurityPolicy: {
+    directives: {
+      "img-src": ["https:", "data:"],
+      "style-src": ["'self'", "*.recipes-ui-dycgvjyr2a-uw.a.run.app"],
+      "script-src": ["'self'", "*.recipes-ui-dycgvjyr2a-uw.a.run.app"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+})
 app.register(fastifySecureSession, {
     // adapt this to point to the directory where secret-key is located
     key: fs.readFileSync(config.cookie_secret_loc),
     cookie: cookieOptions
 })
-if (process.env.NODE_ENV !== 'production') {
-    app.register(fastifyStatic, {
-        root: path.join(__dirname, 'static')
-    })
-}
+// if (process.env.NODE_ENV !== 'production') {
+app.register(fastifyStatic, {
+    root: path.join(__dirname, 'static')
+})
+// }
 app.register(fastifyBody)
 // app.register(rTracer.fastifyMiddleware())
 
@@ -98,6 +109,13 @@ const saveRecipe = async (userId, { url, title, json }) => {
         json
     })
 }
+
+app.get('/', (req, reply) => {
+    reply.type('text/html')
+    reply.send(
+        homePage()
+    )
+})
 
 app.get('/recipes/', { preHandler: authenticationMiddleware }, (req, reply) => {
     reply.raw.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
@@ -212,6 +230,36 @@ app.post('/login', (req, reply) => {
         req.log.error(err)
         req.setFlash('error', err)
         reply.redirect(303, '/login')
+    })
+})
+
+app.post('/loginsignup', (req, reply) => {
+    const { email } = req.body
+    axios.get(apiUrlBase + `/users-by-email?${querystring.stringify({ email })}`).then(response => {
+        const uuid = response.data
+        requestToken(uuid, email).then(token => {
+            req.log.info(token)
+            req.setFlash('email', email)
+            reply.redirect(303, '/login-pending')
+        }, err => {
+            req.log.error(err)
+        })
+    }, err => {
+        axios.post(apiUrlBase + '/users', {
+            email
+        }).then(response => {
+            const uuid = response.data
+            requestToken(uuid, email).then(token => {
+                req.setFlash('email', email)
+                reply.redirect(303, '/login-pending')
+            }, err => {
+                req.log.error(err)
+            })
+        }, err => {
+            req.log.error(err)
+            req.setFlash('error', errors.EMAIL_IN_USE.message)
+            reply.redirect(303, '/signup')
+        })
     })
 })
 

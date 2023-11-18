@@ -19,12 +19,13 @@ const URL_MAP = {
 const urlFromName = (pageName, id) => {
     const protocol = config.use_ssl ? 'https://' : 'http://'
     const host = config.host
+    const port = config.port !== undefined ? `:${config.port}` : ''
     let path = URL_MAP[pageName]
     if (typeof path === "function") {
         path = path(id)
     }
 
-    return protocol + host + path
+    return protocol + host + port + path
 }
 
 class World {

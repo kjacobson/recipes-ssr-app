@@ -6,8 +6,8 @@ const sendEmail = require('./mail')
 const loginSecretKey = config.auth_secret
 
 const jwtOptions = {
-    issuer: `${config.external_host}:${config.external_port}`,
-    audience: `${config.external_host}:${config.external_port}`,
+    issuer: `${config.external_host}${config.external_port ? ':' + config.external_port : ''}`,
+    audience: `${config.external_host}${config.external_port ? ':' + config.external_port : ''}`,
     algorithm: 'HS256',
     expiresIn: '15m',
 }
@@ -34,6 +34,7 @@ const requestToken = (uuid, email) => {
     return new Promise((resolve, reject) => {
         generateToken(uuid, email).then((token) => {
             authToken = token
+            console.debug("JWT token:", token)
             return sendEmail(email, token)
         }, reject)
         .then(() => {

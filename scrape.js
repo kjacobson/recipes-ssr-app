@@ -8,12 +8,14 @@ const errors = require('./errors')
 
 
 const isRecipe = (item) => {
-    return item["@type"] === "Recipe"
+    return item["@type"] === "Recipe" || (
+        Array.isArray(item["@type"]) &&
+        item["@type"][0] === "Recipe"
+    )
 }
 
 const extractRecipe = ($) => (i, el) => {
     const json = JSON.parse($(el).html())
-
     if (Array.isArray(json)) {
         const recipes = json.filter(isRecipe)
         if (recipes.length) {
