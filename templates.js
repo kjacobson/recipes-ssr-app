@@ -226,6 +226,105 @@ const importPage = (errors) => {
     `
 }
 
+const bookmarklet = () => {
+    return H`
+        ${head({
+            lang: 'en',
+            title: 'Import a new recipe',
+        })}
+        <script>
+          const url = "https://recipes-ui-dycgvjyr2a-uw.a.run.app/recipes";
+          const params = new URLSearchParams(window.location.search);
+          const recipeURL = params.get('url');
+          const autoCloseDelay = 5000;
+          const openDelay = 300;
+          const removeIFrameDelay = 600;
+
+          function saveUrl(url) {
+            document.getElementById('msg-text').innerHTML = "Saving...";
+
+            fetch(url, {
+              method: 'POST',
+              body: JSON.stringify({ url: recipeURL }),
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }).then((response) => {
+              if (!response.ok) {
+                if (response.status === 401) {
+                  showLoginMsg();
+                } else {
+                  document.getElementById('msg-text').innerHTML = "Error saving.";
+                }
+                closeAndRemoveBookmarklet(false);
+
+                return;
+              }
+
+              document.getElementById('msg-text').innerHTML = "Saved"
+              closeAndRemoveBookmarklet(false);
+            }, () => {
+              document.getElementById('msg-text').innerHTML = "Error saving.";
+              closeAndRemoveBookmarklet(false);
+            });
+          }
+
+          function showLoginMsg() {
+            document.getElementById('msg-text').innerHTML = 'To save this recipe, please <a href="https://recipes-ui-dycgvjyr2a-uw.a.run.app/login">log in to your account</a>';
+          }
+
+          function openBookmarklet() {
+            // change height
+            parent.postMessage('bookmarkletHeight', '*');
+
+            window.setTimeout(function() {
+              document.getElementById('bookmarklet').className += " open";
+            }, openDelay);
+          }
+
+          // Just close and keep iFrame
+          function closeBookmarklet() {
+            window.setTimeout(function() {
+              document.getElementById('bookmarklet').className = "bookmarklet";
+            }, 50);
+          }
+
+          // Close and Remove iFrame
+          function closeAndRemoveBookmarklet(closeNow) {
+            var delay = autoCloseDelay;
+            if (closeNow) {
+              delay = 50;
+            }
+            window.setTimeout(function() {
+              document.getElementById('bookmarklet').className = "bookmarklet";
+              // remove the iframe after transition is finished
+              window.setTimeout(function() {
+                removeIFrame();
+              }, removeIFrameDelay);
+            }, delay);
+          }
+
+          // send message to parent to remove the iframe
+          function removeIFrame() {
+            // if this value changes, update bookmarklet.js and extension
+            parent.postMessage('remove', '*');
+          }
+        </script>
+        <div id="bookmarklet" class="bookmarklet">
+            <div class="msg">
+              <div id="msg-text"></div>
+              <div class="close" onclick="closeBookmarklet(true);"></div>
+            </div>
+        </div>
+        <div id="backdrop"></div>
+        <script>
+          openBookmarklet();
+          saveUrl(url);
+        </script>
+        ${footer()}
+    `
+}
+
 const loginPage = () => {
     return H`
         ${head({
@@ -315,6 +414,7 @@ module.exports = {
     homePage,
     singleRecipe,
     importPage,
+    bookmarklet,
     showPage,
     loginPage,
     loginPendingPage,

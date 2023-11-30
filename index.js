@@ -21,6 +21,7 @@ const {
     singleRecipe,
     showPage,
     importPage,
+    bookmarklet,
     loginPage,
     loginPendingPage,
     signupPage,
@@ -33,7 +34,8 @@ const errors = require('./errors')
 const cookieOptions = {
     path: '/',
     secure: true,
-    httpOnly: true
+    httpOnly: true,
+    sameSite: 'Lax',
 }
 const apiUrlBase = `${config.api.protocol}://${config.api.host}:${config.api.port}`
 
@@ -48,10 +50,13 @@ app.register(helmet, {
     directives: {
       "img-src": ["https:", "data:"],
       "style-src": ["'self'", "*.recipes-ui-dycgvjyr2a-uw.a.run.app"],
-      "script-src": ["'self'", "*.recipes-ui-dycgvjyr2a-uw.a.run.app"],
+      "script-src": ["*"],
+      // "script-src": ["'self'", "*.recipes-ui-dycgvjyr2a-uw.a.run.app"],
+      // "frame-ancestors": ["https:"],
     },
   },
-  crossOriginEmbedderPolicy: false,
+  // crossOriginEmbedderPolicy: false,
+  // frameguard: false,
 })
 app.register(fastifySecureSession, {
     // adapt this to point to the directory where secret-key is located
@@ -60,7 +65,10 @@ app.register(fastifySecureSession, {
 })
 // if (process.env.NODE_ENV !== 'production') {
 app.register(fastifyStatic, {
-    root: path.join(__dirname, 'static')
+    root: path.join(__dirname, 'static'),
+    setHeaders: (res) => {
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin')
+    }
 })
 // }
 app.register(fastifyBody)
@@ -152,15 +160,23 @@ app.get('/recipes/:id', { preHandler: authenticationMiddleware }, (req, reply, p
 
 app.get('/recipes/import', { preHandler: authenticationMiddleware }, (req, reply) => {
     const errors = req.getFlash('error')
-
     reply.type('text/html')
     reply.send(
         importPage(errors)
     )
 })
 
+app.get('/bookmarklet', { preHandler: authenticationMiddleware, helmet: false }, (req, reply) => {
+    reply.type('text/html')
+    reply.send(
+        bookmarklet()
+    )
+})
+
 app.post('/recipes', { preHandler: authenticationMiddleware }, (req, reply) => {
     const { url } = req.body
+    const headers = req.headers
+    const contentType = headers['Content-Type']
     extractRecipeData(url)
         .then((recipe) => {
             const { json, parsedJson } = recipe
@@ -170,18 +186,34 @@ app.post('/recipes', { preHandler: authenticationMiddleware }, (req, reply) => {
                 json
             }
             return saveRecipe(req.uuid, data)
+        }, (err) => {
+            req.log.error(err)
+            if (contentType === 'application/json') {
+                reply.code(400).send({ error: err })
+            } else {
+                req.setFlash('error', err)
+                reply.redirect(303, '/recipes/import')
+            }
         })
         .then((response) => {
             if (response.data) {
-                reply.redirect(303, '/recipes/' + response.data.id)
+                if (contentType === 'application/json') {
+                    reply.code(200).send({ success: true })
+                } else {
+                    reply.redirect(303, '/recipes/' + response.data.id)
+                }
             } else {
                 reply.send(errors.UNKNOWN_ERROR.message)
             }
         })
         .catch((err) => {
             req.log.error(err)
-            req.setFlash('error', err)
-            reply.redirect(303, '/recipes/import')
+            if (contentType === 'application/json') {
+                reply.code(400).send({ error: err })
+            } else {
+                req.setFlash('error', err)
+                reply.redirect(303, '/recipes/import')
+            }
         })
 })
 
