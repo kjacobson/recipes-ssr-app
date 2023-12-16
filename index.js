@@ -35,7 +35,7 @@ const cookieOptions = {
     path: '/',
     secure: true,
     httpOnly: true,
-    sameSite: 'None',
+    sameSite: 'none',
 }
 const apiUrlBase = `${config.api.protocol}://${config.api.host}:${config.api.port}`
 
