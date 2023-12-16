@@ -226,14 +226,14 @@ const importPage = (errors) => {
     `
 }
 
-const bookmarklet = () => {
+const bookmarklet = (url) => {
     return H`
         ${head({
             lang: 'en',
             title: 'Import a new recipe',
         })}
         <script>
-          const url = "https://recipes-ui-dycgvjyr2a-uw.a.run.app/recipes";
+          const url = "${url}/recipes";
           const params = new URLSearchParams(window.location.search);
           const recipeURL = params.get('url');
           const autoCloseDelay = 5000;
@@ -270,7 +270,7 @@ const bookmarklet = () => {
           }
 
           function showLoginMsg() {
-            document.getElementById('msg-text').innerHTML = 'To save this recipe, please <a href="https://recipes-ui-dycgvjyr2a-uw.a.run.app/login">log in to your account</a>';
+            document.getElementById('msg-text').innerHTML = 'To save this recipe, please <a href="${url}/login">log in to your account</a>';
           }
 
           function openBookmarklet() {

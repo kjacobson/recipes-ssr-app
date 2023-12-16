@@ -35,7 +35,7 @@ const cookieOptions = {
     path: '/',
     secure: true,
     httpOnly: true,
-    sameSite: 'Lax',
+    sameSite: 'None',
 }
 const apiUrlBase = `${config.api.protocol}://${config.api.host}:${config.api.port}`
 
@@ -44,7 +44,7 @@ const app = fastify({
     ignoreTrailingSlash: true,
 })
 
-app.register(helmet, {
+const helmetDefaults = {
   enableCSPNonces: true,
   contentSecurityPolicy: {
     directives: {
@@ -57,7 +57,8 @@ app.register(helmet, {
   },
   // crossOriginEmbedderPolicy: false,
   // frameguard: false,
-})
+};
+app.register(helmet, { global: false })
 app.register(fastifySecureSession, {
     // adapt this to point to the directory where secret-key is located
     key: fs.readFileSync(config.cookie_secret_loc),
@@ -119,6 +120,7 @@ const saveRecipe = async (userId, { url, title, json }) => {
 }
 
 app.get('/', (req, reply) => {
+    reply.helmet(helmetDefaults)
     reply.type('text/html')
     reply.send(
         homePage()
@@ -126,6 +128,7 @@ app.get('/', (req, reply) => {
 })
 
 app.get('/recipes/', { preHandler: authenticationMiddleware }, (req, reply) => {
+    reply.helmet(helmetDefaults)
     reply.raw.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
     reply.raw.write(head({
         lang: 'en',
@@ -149,6 +152,7 @@ app.get('/recipes/', { preHandler: authenticationMiddleware }, (req, reply) => {
 })
 
 app.get('/recipes/:id', { preHandler: authenticationMiddleware }, (req, reply, params) => {
+    reply.helmet(helmetDefaults)
     reply.type('text/html')
     axios.get(`${apiUrlBase}/recipes/${req.params.id}/`).then(response => {
         const recipe = response.data
@@ -160,16 +164,19 @@ app.get('/recipes/:id', { preHandler: authenticationMiddleware }, (req, reply, p
 
 app.get('/recipes/import', { preHandler: authenticationMiddleware }, (req, reply) => {
     const errors = req.getFlash('error')
+    reply.helmet(helmetDefaults)
     reply.type('text/html')
     reply.send(
         importPage(errors)
     )
 })
 
-app.get('/bookmarklet', { preHandler: authenticationMiddleware, helmet: false }, (req, reply) => {
+app.get('/bookmarklet', (req, reply) => {
     reply.type('text/html')
     reply.send(
-        bookmarklet()
+        bookmarklet(
+          `${config.protocol}://${config.external_host}${config.external_port ? `:${config.external_port}` : ''}`
+        )
     )
 })
 
@@ -177,6 +184,8 @@ app.post('/recipes', { preHandler: authenticationMiddleware }, (req, reply) => {
     const { url } = req.body
     const headers = req.headers
     const contentType = headers['Content-Type']
+    reply.helmet(helmetDefaults)
+    reply.header('Access-Control-Allow-Origin', `${config.protocol}://${config.external_host}${config.external_port ? `:${config.external_port}` : ''}`)
     extractRecipeData(url)
         .then((recipe) => {
             const { json, parsedJson } = recipe
@@ -220,12 +229,14 @@ app.post('/recipes', { preHandler: authenticationMiddleware }, (req, reply) => {
 app.get('/signup', (req, reply) => {
     const errors = req.getFlash('error')
 
+    reply.helmet(helmetDefaults)
     reply.type('text/html')
     reply.send(signupPage(errors))
 })
 
 app.post('/users', (req, reply) => {
     const { email } = req.body
+    reply.helmet(helmetDefaults)
     axios.post(apiUrlBase + '/users', {
         email
     }).then(response => {
@@ -244,11 +255,13 @@ app.post('/users', (req, reply) => {
 })
 
 app.get('/login', (req, reply) => {
+    reply.helmet(helmetDefaults)
     reply.type('text/html').send(loginPage())
 })
 
 app.post('/login', (req, reply) => {
     const { email } = req.body
+    reply.helmet(helmetDefaults)
     axios.get(apiUrlBase + `/users-by-email?${querystring.stringify({ email })}`).then(response => {
         const uuid = response.data
         requestToken(uuid, email).then(token => {
@@ -267,6 +280,7 @@ app.post('/login', (req, reply) => {
 
 app.post('/loginsignup', (req, reply) => {
     const { email } = req.body
+    reply.helmet(helmetDefaults)
     axios.get(apiUrlBase + `/users-by-email?${querystring.stringify({ email })}`).then(response => {
         const uuid = response.data
         requestToken(uuid, email).then(token => {
@@ -300,17 +314,20 @@ app.get('/login-pending', (req, reply) => {
     if (email && email.length) {
         email = email[0]
     }
+    reply.helmet(helmetDefaults)
     reply.type('text/html').send(loginPendingPage(email))
 })
 
 app.get('/logout', (req, reply) => {
     req.session.delete()
 
+    reply.helmet(helmetDefaults)
     reply.redirect(303, '/login')
 })
 
 app.get('/verify', (req, reply) => {
     const token = req.query.token
+    reply.helmet(helmetDefaults)
     if (token) {
         validateToken(token, req.hostname).then((uuid) => {
             uuid = uuid.id ? uuid.id : uuid

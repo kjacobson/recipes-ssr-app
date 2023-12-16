@@ -1,5 +1,7 @@
 (function() {
-  const rgHost = 'https://recipes-ui-dycgvjyr2a-uw.a.run.app';
+  const selfSrc = document.getElementById('rgJS').src;
+  const { search } = new URL(selfSrc);
+  const rgHost = new URLSearchParams(search).get('host');
   const rgSaveUrl = encodeURIComponent(location.href);
   const rgPath = '/bookmarklet';
 
@@ -9,7 +11,7 @@
     rgDiv.style.cssText = "position:fixed;top:0;width:100%;z-index:2147483647";
 
     const rgIframe = document.createElement('iframe');
-    rgIframe.id = 'nytIframe';
+    rgIframe.id = 'rgtIframe';
     rgIframe.style.cssText = "width:100%;position:fixed;border:0;left:0";
 
     rgIframe.setAttribute('src', rgUrl + "?url=" + rgSaveUrl);
