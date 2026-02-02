@@ -21,7 +21,7 @@ const {
     singleRecipe,
     showPage,
     importPage,
-    bookmarklet,
+    bookmarkletInstallPage,
     loginPage,
     loginPendingPage,
     signupPage,
@@ -79,7 +79,10 @@ app.register(fastifyBody)
 const authenticationMiddleware = (request, reply, next) => {
     const uuid = request.session.get('uuid')
     if (!uuid) {
-        return reply.redirect(401, '/login')
+        // Capture the current URL to redirect back after login
+        const currentUrl = request.url
+        const redirectParam = encodeURIComponent(currentUrl)
+        return reply.redirect(401, `/login?redirect=${redirectParam}`)
     } else {
         request.uuid = uuid
         next()
@@ -120,11 +123,16 @@ const saveRecipe = async (userId, { url, title, json }) => {
 }
 
 app.get('/', (req, reply) => {
-    reply.helmet(helmetDefaults)
-    reply.type('text/html')
-    reply.send(
-        homePage()
-    )
+    const uuid = req.session.get('uuid')
+    if (!uuid) {
+        reply.helmet(helmetDefaults)
+        reply.type('text/html')
+        reply.send(
+            homePage()
+        )
+    } else {
+        reply.redirect(303, '/recipes')
+    }
 })
 
 app.get('/recipes/', { preHandler: authenticationMiddleware }, (req, reply) => {
@@ -171,13 +179,45 @@ app.get('/recipes/import', { preHandler: authenticationMiddleware }, (req, reply
     )
 })
 
-app.get('/bookmarklet', (req, reply) => {
+app.get('/bookmarklet/install', { preHandler: authenticationMiddleware }, (req, reply) => {
+    const host = `${config.protocol}://${config.external_host}${config.external_port ? `:${config.external_port}` : ''}`
+    reply.helmet(helmetDefaults)
     reply.type('text/html')
-    reply.send(
-        bookmarklet(
-          `${config.protocol}://${config.external_host}${config.external_port ? `:${config.external_port}` : ''}`
-        )
-    )
+    reply.send(bookmarkletInstallPage(host))
+})
+
+app.get('/bookmarklet/save', { preHandler: authenticationMiddleware }, (req, reply) => {
+    const recipeUrl = req.query.url || ''
+
+    if (!recipeUrl) {
+        reply.helmet(helmetDefaults)
+        reply.code(400).type('text/html').send(errorPage('No recipe URL provided'))
+        return
+    }
+
+    extractRecipeData(recipeUrl)
+        .then((recipe) => {
+            const { json, parsedJson } = recipe
+            const data = {
+                url: recipeUrl,
+                title: parsedJson.name,
+                json
+            }
+            return saveRecipe(req.uuid, data)
+        })
+        .then((response) => {
+            if (response.data) {
+                reply.redirect(303, '/recipes/' + response.data.id)
+            } else {
+                reply.helmet(helmetDefaults)
+                reply.code(500).type('text/html').send(errorPage(errors.UNKNOWN_ERROR.message))
+            }
+        })
+        .catch((err) => {
+            req.log.error(err)
+            reply.helmet(helmetDefaults)
+            reply.code(400).type('text/html').send(errorPage(err.message || 'Failed to save recipe'))
+        })
 })
 
 app.post('/recipes', { preHandler: authenticationMiddleware }, (req, reply) => {
@@ -255,18 +295,22 @@ app.post('/users', (req, reply) => {
 })
 
 app.get('/login', (req, reply) => {
+    const redirect = req.query.redirect || ''
     reply.helmet(helmetDefaults)
-    reply.type('text/html').send(loginPage())
+    reply.type('text/html').send(loginPage(redirect))
 })
 
 app.post('/login', (req, reply) => {
-    const { email } = req.body
+    const { email, redirect } = req.body
     reply.helmet(helmetDefaults)
     axios.get(apiUrlBase + `/users-by-email?${querystring.stringify({ email })}`).then(response => {
         const uuid = response.data
         requestToken(uuid, email).then(token => {
             req.log.info(token)
             req.setFlash('email', email)
+            if (redirect) {
+                req.setFlash('redirect', redirect)
+            }
             reply.redirect(303, '/login-pending')
         }, err => {
             req.log.error(err)
@@ -335,7 +379,10 @@ app.get('/verify', (req, reply) => {
             axios.put(apiUrlBase + `/users/${uuid}`, {
                 verified: true
             }).then(response => {
-                reply.redirect(303, '/recipes')
+                // Check for a stored redirect URL, otherwise default to /recipes
+                const redirectFlash = req.getFlash('redirect')
+                const redirectUrl = (redirectFlash && redirectFlash.length) ? redirectFlash[0] : '/recipes'
+                reply.redirect(303, redirectUrl)
             }, err => {
                 req.log.error(err)
                 req.setFlash('error', errors.UNKNOWN_ERROR.message)

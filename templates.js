@@ -51,7 +51,7 @@ const head = ({lang, title, h1, nav}) => {
                 <title>!${title}</title>
                 <meta name="description" content="">
                 <meta name="viewport" content="width=device-width, initial-scale=1">
-                <link rel="preload" href="index.css" as="style">
+                <link rel="preload" href="/index.css" as="style">
                 <link rel="stylesheet" href="/index.css">
             </head>
             <body>
@@ -204,21 +204,27 @@ const importPage = (errors) => {
                 placeholder="https://www.saveur.com/article/Recipes/Creamed-Brussels-Sprouts/"
             />
             <button type="submit">Import</button>
+            <h3>You can also use our bookmarklet!</h3>
+            <p>
+                The RecipeGrab bookmarklet allows you to save recipes with one click as you're browsing the web.
+                <a href="/bookmarklet/install" title="Learn how to install and use the bookmarklet">Learn more here.</a>
+            </p>
             <h3>Some sites we can definitely import from:</h3>
             <ul>
                 <li>bon appétit</li>
                 <li>allrecipes</li>
                 <li>Food &amp; Wine</li>
+                <li>Serious Eats</li>
                 <li>the kitchn</li>
                 <li>tasty.co</li>
                 <li>myrecipes</li>
                 <li>Epicurious</li>
+                <li>NYTimes</li>
             </ul>
 
             <h3>Some sites we can't import from:</h3>
             <ul>
                 <li>Saveur</li>
-                <li>NYTimes</li>
                 <li>BBC Good Food</li>
             </ul>
         </form>
@@ -226,106 +232,7 @@ const importPage = (errors) => {
     `
 }
 
-const bookmarklet = (url) => {
-    return H`
-        ${head({
-            lang: 'en',
-            title: 'Import a new recipe',
-        })}
-        <script>
-          const url = "${url}/recipes";
-          const params = new URLSearchParams(window.location.search);
-          const recipeURL = params.get('url');
-          const autoCloseDelay = 5000;
-          const openDelay = 300;
-          const removeIFrameDelay = 600;
-
-          function saveUrl(url) {
-            document.getElementById('msg-text').innerHTML = "Saving...";
-
-            fetch(url, {
-              method: 'POST',
-              body: JSON.stringify({ url: recipeURL }),
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }).then((response) => {
-              if (!response.ok) {
-                if (response.status === 401) {
-                  showLoginMsg();
-                } else {
-                  document.getElementById('msg-text').innerHTML = "Error saving.";
-                }
-                closeAndRemoveBookmarklet(false);
-
-                return;
-              }
-
-              document.getElementById('msg-text').innerHTML = "Saved"
-              closeAndRemoveBookmarklet(false);
-            }, () => {
-              document.getElementById('msg-text').innerHTML = "Error saving.";
-              closeAndRemoveBookmarklet(false);
-            });
-          }
-
-          function showLoginMsg() {
-            document.getElementById('msg-text').innerHTML = 'To save this recipe, please <a href="${url}/login">log in to your account</a>';
-          }
-
-          function openBookmarklet() {
-            // change height
-            parent.postMessage('bookmarkletHeight', '*');
-
-            window.setTimeout(function() {
-              document.getElementById('bookmarklet').className += " open";
-            }, openDelay);
-          }
-
-          // Just close and keep iFrame
-          function closeBookmarklet() {
-            window.setTimeout(function() {
-              document.getElementById('bookmarklet').className = "bookmarklet";
-            }, 50);
-          }
-
-          // Close and Remove iFrame
-          function closeAndRemoveBookmarklet(closeNow) {
-            var delay = autoCloseDelay;
-            if (closeNow) {
-              delay = 50;
-            }
-            window.setTimeout(function() {
-              document.getElementById('bookmarklet').className = "bookmarklet";
-              // remove the iframe after transition is finished
-              window.setTimeout(function() {
-                removeIFrame();
-              }, removeIFrameDelay);
-            }, delay);
-          }
-
-          // send message to parent to remove the iframe
-          function removeIFrame() {
-            // if this value changes, update bookmarklet.js and extension
-            parent.postMessage('remove', '*');
-          }
-        </script>
-        <div id="bookmarklet" class="bookmarklet">
-            <div class="msg">
-              <div id="msg-text"></div>
-              <div class="close" onclick="closeBookmarklet(true);"></div>
-            </div>
-        </div>
-        <div id="backdrop"></div>
-        <script>
-          openBookmarklet();
-          saveUrl(url);
-        </script>
-        ${footer()}
-    `
-}
-
-const loginPage = () => {
+const loginPage = (redirect) => {
     return H`
         ${head({
             lang: 'en',
@@ -335,6 +242,7 @@ const loginPage = () => {
         })}
         <form action="/login" method="POST">
             <h3>Enter your email and get a one&#45;time login link</h3>
+            ${redirect ? H`<input type="hidden" name="redirect" value="!${redirect}" />` : ''}
             <input
                 type="email"
                 name="email"
@@ -394,6 +302,45 @@ const signupPage = (errors) => {
     `
 }
 
+const bookmarkletInstallPage = (host) => {
+    // Simple bookmarklet that opens /bookmarklet/save in a new tab
+    const bookmarkletCode = `javascript:(function(){window.open('${host}/bookmarklet/save?url='+encodeURIComponent(location.href));})();`
+
+    return H`
+        ${head({
+            lang: 'en',
+            title: 'RecipeGrab bookmarklet',
+            h1: 'Install the RecipeGrab bookmarklet',
+            nav: allRecipesNav()
+        })}
+        <article>
+            <h3>Installation Instructions:</h3>
+            <ol>
+                <li>Drag the button below to your browser's bookmark bar</li>
+                <li>If the bookmark bar is hidden, press <code>Ctrl+Shift+B</code> (Windows) or <code>Cmd+Shift+B</code> (Mac) to show it</li>
+                <li>Navigate to any recipe page and click the bookmarklet to save</li>
+            </ol>
+
+            <h4>Drag this to your bookmark bar:</h4>
+            <p>
+                <a class="bookmarklet-link" href="${bookmarkletCode}">Save to RecipeGrab</a>
+            </p>
+
+            <h3>Manual Installation:</h3>
+            <p>If dragging doesn't work, you can manually create a bookmark:</p>
+            <ol>
+                <li>Create a new bookmark (right-click bookmark bar &rarr; "Add page...")</li>
+                <li>Name it "Save to RecipeGrab"</li>
+                <li>Copy the code below and paste it as the URL</li>
+            </ol>
+            <p>
+                <textarea readonly onclick="this.select()">${bookmarkletCode}</textarea>
+            </p>
+        </article>
+        ${footer()}
+    `
+}
+
 const errorPage = (message) => {
     return H`
         ${head({
@@ -414,7 +361,7 @@ module.exports = {
     homePage,
     singleRecipe,
     importPage,
-    bookmarklet,
+    bookmarkletInstallPage,
     showPage,
     loginPage,
     loginPendingPage,
